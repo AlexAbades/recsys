@@ -6,3 +6,6 @@ venv/
 
 # Raw Data 
 src/data/raw/ml-25m/
+
+# Local checkpoints 
+src/checkpoints/

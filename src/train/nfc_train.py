@@ -9,10 +9,15 @@ import yaml
 from src.utils.evaluation_metrics.evaluation import evaluate_model
 import numpy as np
 import os
+import json
 from src.utils.evaluation_metrics.evaluation import *
-from src.utils.model_stats.stats import calculate_model_size, save_checkpoint
+from src.utils.model_stats.stats import (
+    calculate_model_size,
+    save_accuracy,
+    save_checkpoint,
+)
 
-os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
+os.environ["CUDA_LAUNCH_BLOCKING"] = "0"
 
 
 # TODO: top popular items by users model to see that my model is performing better
@@ -24,6 +29,7 @@ os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 def load_config(config_path):
     with open(config_path, "r") as file:
         return yaml.safe_load(file)
+
 
 print(os.getcwd())
 # Load the configuration
@@ -44,18 +50,13 @@ loss_fn = {"BCE": nn.BCELoss()}
 verbose = 1
 topK = config["topK"]
 evaluation_threads = config["evaluation_threads"]
-check_point_path = "./src/checkpoints"
+check_point_path = "./src/checkpoints/nfc"
 
 # Check for GPU
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-
 if __name__ == "__main__":
-    data = MovieLensDataset()
-    data.load_processed_data(data_path)
-    print(layers)
-    
 
     print(config)
     try:
@@ -103,9 +104,9 @@ if __name__ == "__main__":
         # Model to train
         model.train()
 
-        print(f"Training epoch {epoch}.")
-        print("Generating Negative Samples...")
+        print(f"Training epoch {epoch}. Generating N.S.")
         user_input, item_input, labels = data.get_train_data()
+        sample_time = (time() - start_time) / 60
         # TODO: We can add get item, though if we have to genererate radom
         # negative samples each time we shoud include somthing to create each time a
         # datatensor is created.
@@ -134,8 +135,7 @@ if __name__ == "__main__":
             optimizer.step()
 
             # Calculate elapsed time for 1 train
-            train_time = (time() - start_time) / 60
-            break
+            train_time = (time() - start_time) / 60 - sample_time
 
         # Evaluation
         if epoch % verbose == 0:
@@ -148,11 +148,21 @@ if __name__ == "__main__":
                 loss,
             )
 
-            test_time = (time() - start_time) / 60
+            test_time = ((time() - start_time) / 60) - train_time - sample_time
+            total_time = (time() - start_time) / 60
 
             print(
-                "Iteration %d [%.1f s]: HR = %.4f, NDCG = %.4f, loss = %.4f [%.1f s]"
-                % (epoch, train_time, hr, ndcg, loss, test_time)
+                "[%d] time %.2f m - HR = %.4f, NDCG = %.4f, loss = %.4f. Times: Data %.2f m - Train %.2f m - Test %.2f m"
+                % (
+                    epoch,
+                    total_time,
+                    hr,
+                    ndcg,
+                    loss,
+                    sample_time,
+                    train_time,
+                    test_time,
+                )
             )
 
             # Save checkpoints
@@ -162,18 +172,32 @@ if __name__ == "__main__":
                 check_point_path, "best_epoch.bin".format(epoch)
             )
 
+            # Save lastest model
             save_checkpoint(
                 chk_path_latest, epoch, learning_rate, optimizer, model, min_loss
             )
-            # Save lastest model
-            if (epoch + 1) % verbose == 0:
-                save_checkpoint(
-                    chk_path, epoch, learning_rate, optimizer, model, min_loss
-                )
+            save_accuracy(
+                check_point_path + "/latest_epoch", hr=hr, ndcg=ndcg, epoch=epoch
+            )
 
+            # Save model every X epoch
+            if (epoch + 1) % 20 == 0:
+                save_checkpoint(
+                    chk_path,
+                    epoch,
+                    learning_rate,
+                    optimizer,
+                    model,
+                    min_loss,
+                )
+                save_accuracy(check_point_path + f"/epoch_{epoch}", hr=hr, ndcg=ndcg)
+            # Save best Model
             if hr > best_hr:
                 best_hr, best_ndcg, best_iter = hr, ndcg, epoch
+
                 save_checkpoint(
                     chk_path_best, epoch, learning_rate, optimizer, model, min_loss
                 )
-        break
+                save_accuracy(
+                    check_point_path + "/best_epoch", hr=hr, ndcg=ndcg, epoch=epoch
+                )
