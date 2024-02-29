@@ -1,6 +1,6 @@
 #!/bin/sh  
 #BSUB -q gpua100
-#BSUB -J GenralMF
+#BSUB -J NeuralCF
 #BSUB -W 72:00
 #BSUB -B
 #BSUB -N
