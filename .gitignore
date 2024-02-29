@@ -1,5 +1,6 @@
 # venv
 venv/
+testenv/
 
 # Debug files 
 .vscode/
