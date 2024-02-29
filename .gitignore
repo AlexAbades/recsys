@@ -3,3 +3,6 @@ venv/
 
 # Debug files 
 .vscode/
+
+# Raw Data 
+src/data/raw/ml-25m/
