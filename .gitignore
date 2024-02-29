@@ -10,3 +10,8 @@ src/data/raw/ml-25m/
 
 # Local checkpoints 
 src/checkpoints/
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
