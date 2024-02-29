@@ -1,45 +1,37 @@
 import errno
-from time import time
-from src.models.nfc.nfc import NFC
-from src.data.DataLoader import MovieLensDataset
-import torch
-from torch import nn, optim
-from torch.utils.data import DataLoader, TensorDataset
-import yaml
-from src.utils.evaluation_metrics.evaluation import evaluate_model
 import numpy as np
+import yaml
+from torch import nn, optim
+import torch
+from time import time
+from src.data.DataLoader import MovieLensDataset
+from src.models.gmf.gmf import GMF
+from torch.utils.data import DataLoader, TensorDataset
+from src.utils.evaluation_metrics.evaluation import evaluate_model
 import os
-from src.utils.evaluation_metrics.evaluation import *
+
 from src.utils.model_stats.stats import (
     calculate_model_size,
     save_accuracy,
     save_checkpoint,
 )
 
-os.environ["CUDA_LAUNCH_BLOCKING"] = "0"
-
-
-# TODO: top popular items by users model to see that my model is performing better
-# TODO: Write overleaf
-# TODO: Table with perfomance on top popular, svd, NFC
-# TODO: Reciprocal Rank (get list of recomended items, see where is the first relevant item in the list, divide 1/position on the list), NCDG,
-
 
 def load_config(config_path):
     with open(config_path, "r") as file:
         return yaml.safe_load(file)
 
+
 # Load the configuration
-config = load_config("./src/config/nfc/ml-1m-1.yaml")
+config = load_config("./src/config/gmf/ml-1m-1.yaml")
+
 
 # Accessing configuration data
-layers = config["layers"]
-learning_rate = config["learning_rate"]
 optimizer = config["optimizer"]
+learning_rate = config["learning_rate"]
 batch_size = config["batch_size"]
 num_epochs = config["epochs"]
 num_negative_instances = config["num_negative_instances"]
-dropout = config["dropout"]
 num_factors = config["num_factors"]
 data_path = "./src/data/processed/ml-1m/ml-1m"
 optimizer = {"adam": optim.Adam, "SGD": optim.SGD}
@@ -47,14 +39,13 @@ loss_fn = {"BCE": nn.BCELoss()}
 verbose = 1
 topK = config["topK"]
 evaluation_threads = config["evaluation_threads"]
-check_point_path = "./src/checkpoints/nfc"
+check_point_path = "./src/checkpoints/gmf"
 
 # Check for GPU
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 if __name__ == "__main__":
-
     print(config)
     try:
         os.makedirs(check_point_path)
@@ -79,9 +70,7 @@ if __name__ == "__main__":
     min_loss = 100000
 
     # Initialize Model
-    model = NFC(
-        num_users=num_users, num_items=num_items, mf_dim=num_factors, layers=layers
-    ).to(device)
+    model = GMF(num_users=num_users, num_items=num_items, mf_dim=num_factors).to(device)
     model_size_mb = calculate_model_size(model)
 
     # Init performance
@@ -98,18 +87,16 @@ if __name__ == "__main__":
     # Start epoch
     for epoch in range(num_epochs):
         start_time = time()
-        # Model to train
+
         model.train()
 
         print(f"Training epoch {epoch}. Generating N.S.")
         user_input, item_input, labels = data.get_train_data()
         sample_time = (time() - start_time) / 60
-        # TODO: We can add get item, though if we have to genererate radom
-        # negative samples each time we shoud include somthing to create each time a
-        # datatensor is created.
+
         dataset = TensorDataset(user_input, item_input, labels)
         dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
-        # calculate_memory_allocation()
+
         for batch in dataloader:
             user_input = batch[0].to(device)
             item_input = batch[1].to(device)
@@ -118,20 +105,10 @@ if __name__ == "__main__":
 
             # Forward pass.
             output = model(user_input, item_input)
-
-            # Compute loss.
             loss = loss_fn(output, labels)
-
-            # Clean up gradients from the model.
             optimizer.zero_grad()
-
-            # Compute gradients based on the loss from the current batch (backpropagation).
             loss.backward()
-
-            # Take one optimizer step using the gradients computed in the previous step.
             optimizer.step()
-
-            # Calculate elapsed time for 1 train
             train_time = (time() - start_time) / 60 - sample_time
 
         # Evaluation

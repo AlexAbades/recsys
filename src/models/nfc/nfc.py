@@ -11,7 +11,7 @@ class NFC(nn.Module):
     def __init__(
         self, num_users, num_items, mf_dim, layers=[10], reg_mf=0, reg_layers=[0]
     ) -> None:
-        super(NFC, self).__init__()
+        super().__init__()
         self.mf_dim = mf_dim
         self.num_layers = len(layers)
 
