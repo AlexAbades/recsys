@@ -1,3 +1,4 @@
+import argparse
 import errno
 from time import time
 from src.models.nfc.nfc import NFC
@@ -29,31 +30,56 @@ def load_config(config_path):
     with open(config_path, "r") as file:
         return yaml.safe_load(file)
 
-# Load the configuration
-config = load_config("./src/config/nfc/ml-1m-1.yaml")
 
-# Accessing configuration data
-layers = config["layers"]
-learning_rate = config["learning_rate"]
-optimizer = config["optimizer"]
-batch_size = config["batch_size"]
-num_epochs = config["epochs"]
-num_negative_instances = config["num_negative_instances"]
-dropout = config["dropout"]
-num_factors = config["num_factors"]
-data_path = "./src/data/processed/ml-1m/ml-1m"
-optimizer = {"adam": optim.Adam, "SGD": optim.SGD}
-loss_fn = {"BCE": nn.BCELoss()}
-verbose = 1
-topK = config["topK"]
-evaluation_threads = config["evaluation_threads"]
-check_point_path = "./src/checkpoints/nfc"
+def parse_args():
+    parser = argparse.ArgumentParser(description="Run GMF.")
+    parser.add_argument(
+        "-c",
+        "--checkpoint",
+        default="src/checkpoints/nfc/",
+        type=str,
+        metavar="PATH",
+        help="checkpoint directory",
+    )
+    parser.add_argument(
+        "--config", type=str, default="ml-1m-1.yaml", help="Path to the config file."
+    )
+    opts = parser.parse_args()
+    return opts
+
 
 # Check for GPU
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 if __name__ == "__main__":
+
+    opts = parse_args()
+    config_path = "src/config/nfc/" + opts.config
+    # Load the configuration
+    config = load_config(config_path)
+    # Extract the base name (file name with extension)
+    base_name = os.path.basename(opts.config)
+
+    # Split the base name by '.' and discard the extension
+    file_name_without_extension = os.path.splitext(base_name)[0]
+
+    check_point_path = opts.checkpoint + file_name_without_extension
+    # Accessing configuration data
+    layers = config["layers"]
+    learning_rate = config["learning_rate"]
+    optimizer = config["optimizer"]
+    batch_size = config["batch_size"]
+    num_epochs = config["epochs"]
+    num_negative_instances = config["num_negative_instances"]
+    dropout = config["dropout"]
+    num_factors = config["num_factors"]
+    data_path = "./src/data/processed/ml-1m/ml-1m"
+    optimizer = {"adam": optim.Adam, "SGD": optim.SGD}
+    loss_fn = {"BCE": nn.BCELoss()}
+    verbose = 1
+    topK = config["topK"]
+    evaluation_threads = config["evaluation_threads"]
 
     print(config)
     try:
