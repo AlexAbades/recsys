@@ -11,6 +11,9 @@ src/data/raw/ml-25m/
 # Local checkpoints 
 src/checkpoints/
 
+# Notebooks
+# src/notebooks
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
