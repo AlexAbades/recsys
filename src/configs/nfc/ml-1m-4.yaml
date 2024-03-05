@@ -1,0 +1,12 @@
+layers: [64, 32, 16, 8]
+learning_rate: 0.001
+optimizer: adam
+batch_size: 256
+epochs: 100
+num_negative_instances: 4
+dropout: 0
+# size of the matrix factorization embedings
+num_factors: 64
+topK: 10
+evaluation_threads: 1
+

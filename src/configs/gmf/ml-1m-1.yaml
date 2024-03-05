@@ -1,0 +1,8 @@
+learning_rate: 0.001
+optimizer: adam
+batch_size: 256
+epochs: 100
+num_negative_instances: 4
+num_factors: 8
+topK: 10
+evaluation_threads: 1

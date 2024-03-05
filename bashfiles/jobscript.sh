@@ -13,8 +13,10 @@
 #BSUB -o logs/%J.out
 #BSUB -e logs/%J.err
 
+module load python3/3.10.12
 module load cuda/11.8
 
-source venv/bin/activate
+source /zhome/c0/a/164613/Desktop/recsys/venv/bin/activate
+export PYTHONPATH=/zhome/c0/a/164613/Desktop/recsys:$PYTHONPATH
 
 python src/train/nfc_train.py

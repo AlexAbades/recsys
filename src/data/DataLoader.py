@@ -1,14 +1,12 @@
-import pandas as pd
-from pandas import DataFrame
+from typing import List, Tuple
 import numpy as np
-import scipy.sparse as sp
-from typing import Tuple, List
-from torch.utils.data import Dataset
-import torch
-from torch import Tensor
-from sklearn.model_selection import train_test_split
-
 import pandas as pd
+import scipy.sparse as sp
+import torch
+from pandas import DataFrame
+from sklearn.model_selection import train_test_split
+from torch import Tensor
+from torch.utils.data import Dataset
 
 # TODO: Should create 2 main methods (aside from getitem)
 # - For processing raw data, load dataset: Missing Create Negative Samples
