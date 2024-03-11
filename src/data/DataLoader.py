@@ -202,7 +202,7 @@ class MovieLensDataset(Dataset):
         num_items = train.shape[1]
         # Iterate over all non-zero elements in the sparse matrix
         # which are the positive instances
-        train_coo = train.tocoo()  # Convert to COO format for easy iteration
+        train_coo = train.tocoo() 
         for u, i in zip(train_coo.row, train_coo.col):
             # positive instance
             user_input.append(u)

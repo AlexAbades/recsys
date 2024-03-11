@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 
 
-class PreProcessData:
+class PreProcessDataNCF:
     def __init__(
         self,
         data_path: str = None,
@@ -39,7 +39,7 @@ class PreProcessData:
 
     def split_traintest(self):
         """
-        Funtion that splits the dataser into train/test. It ensures tha no users with just one interaction
+        Funtion that splits the dataser into train/test. It ensures that no users with just one interaction
         end up in the test set.
 
         """
