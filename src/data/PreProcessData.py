@@ -31,11 +31,11 @@ class PreProcessData:
         self.item_column = item_column
         self.interaction_column = interaction_column
         self.sep = sep
-        self.rawData = self._load_data()
+        self.rawData = self._load_data(data_path)
         self.ratings = self._binarize_data()
 
-    def _load_data(self):
-        return pd.read_csv(filepath_or_buffer=self.data_path, sep=self.sep)
+    def _load_data(self, data_path):
+        return pd.read_csv(filepath_or_buffer=data_path, sep=self.sep)
 
     def split_traintest(self):
         """
@@ -60,20 +60,23 @@ class PreProcessData:
 
         test_idx = np.isin(self.ratings.index, np.array(idx))
 
-        self.train_ratings, self.test_ratings = self.ratings[~test_idx], self.ratings[test_idx]
+        self.train_ratings, self.test_ratings = (
+            self.ratings[~test_idx],
+            self.ratings[test_idx],
+        )
 
     def _binarize_data(self):
         """
         Function that binarizes the interaction column of the data. It can be ratigs, downloads, impresions...
         The column to binarize must be a float or integer column.
         """
-
-        self.ratings = self.rawData[
-            [self.user_column, self.item_column, self.interaction_column]
-        ].copy()
-        self.ratings[self.interaction_column] = self.ratings[
-            self.interaction_column
-        ].apply(lambda x: 1 if x > 0 else 0)
+        if not self.interaction_column:
+            self.ratings = self.rawData[
+                [self.user_column, self.item_column, self.interaction_column]
+            ].copy()
+            self.ratings[self.interaction_column] = self.ratings[
+                self.interaction_column
+            ].apply(lambda x: 1 if x > 0 else 0)
 
     def negative_samples(self, K: int = 99):
         """
@@ -110,7 +113,7 @@ class PreProcessData:
 
     def save_data(self, folder_name):
         """
-        Saves the Class atributes train-ratings, 
+        Saves the Class atributes train-ratings,
         """
         current_file_path = os.path.abspath(__file__)
         data_folder_path = os.path.dirname(current_file_path)

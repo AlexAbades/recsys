@@ -84,7 +84,7 @@ def eval_one_rating(idx):
     items.pop()
 
     # Evaluate top rank list
-    ranklist = heapq.nlargest(_K, map_item_score, key=map_item_score.get)
+    ranklist = heapq.nlargest(_K, map_item_score, key=map_item_score.get)  # Just a List
     hr = getHitRatio(ranklist, ground_truth_item)
     ndcg = getNDCG(ranklist, ground_truth_item)
     return (hr, ndcg)

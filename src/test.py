@@ -2,14 +2,8 @@ from src.models.mlp.mlp import MLP
 import os
 from src.utils.tools.tools import get_config
 
-PATH = "./configs/nfc/ml-1m-1.yaml"
+from src.models.contextNFC.context_nfc import DeepNCF
 
 if __name__ == "__main__":
-    print(PATH)
-    print(os.path.join(os.path.dirname(os.path.realpath(__file__)), ".."))
-    print(os.path.abspath(__file__))
-    print(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-    with open(PATH, "r") as stream:
-        pass
-    args = get_config(PATH)
+    model = DeepNCF(num_users=6570, num_items=1012, num_context=22, mf_dim=8, layers=[42, 9, 4])
+    print(model)
