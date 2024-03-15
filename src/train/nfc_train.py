@@ -103,16 +103,7 @@ def train_with_config(args, opts):
     global _loss_fn
     global _device
 
-    normalized_path = os.path.normpath(args.processed_data_root)
-    data_name = os.path.basename(normalized_path)
-    check_point_path = os.path.join(ROOT_PATH, opts.checkpoint, data_name, args.name)
-    try:
-        os.makedirs(check_point_path)
-    except OSError as e:
-        if e.errno != errno.EEXIST:
-            raise RuntimeError(
-                "Unable to create checkpoint directory:", check_point_path
-            )
+    data_name, check_point_path = create_checkpoint_folder(args, opts)
 
     print(f"Running in device: {_device}")
     # Load Dataset
@@ -241,6 +232,20 @@ def train_with_config(args, opts):
                 save_accuracy(
                     check_point_path + "/best_epoch", hr=hr, ndcg=ndcg, epoch=epoch
                 )
+
+def create_checkpoint_folder(args, opts):
+    normalized_path = os.path.normpath(args.processed_data_root)
+    data_name = os.path.basename(normalized_path)
+    check_point_path = os.path.join(ROOT_PATH, opts.checkpoint, data_name, args.name)
+    try:
+        os.makedirs(check_point_path)
+    except OSError as e:
+        if e.errno != errno.EEXIST:
+            raise RuntimeError(
+                "Unable to create checkpoint directory:", check_point_path
+            )
+            
+    return data_name,check_point_path
 
 
 if __name__ == "__main__":

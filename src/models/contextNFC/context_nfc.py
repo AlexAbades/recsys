@@ -10,7 +10,7 @@ from src.models.mlp.mlp import MLP
 
 class DeepNCF(nn.Module):
     """
-    Implements the Context Aware Neural Collaborative Filtering (DeepNCF) model, which combines 
+    Implements the Context Aware Neural Collaborative Filtering (DeepNCF) model, which combines
     Generalized Matrix Factorization (GMF) and a Multi-Layer Perceptron (MLP).
 
     Reference:
@@ -37,6 +37,7 @@ class DeepNCF(nn.Module):
         num_context: int,
         mf_dim: int,
         layers: List[int],
+        binary_classification: bool = True,
     ) -> None:
         """
         Initializes the DeepNCF model.
@@ -51,6 +52,7 @@ class DeepNCF(nn.Module):
         super().__init__()
         mlp_in_layer = layers[0]
         mlp_out_layer = layers[-1]
+        self.binary_classification = binary_classification
 
         # Init Embeddings
         self.embeddings = Embedding(
@@ -73,7 +75,7 @@ class DeepNCF(nn.Module):
             context_input (Tensor): Input tensor containing context feature for the user IDs.
 
         Returns:
-            Tensor: The predicted preferences or ratings, depending on the use case 
+            Tensor: The predicted preferences or ratings, depending on the use case
             (interaction prediction or rating prediction).
         """
         # Embeddings
@@ -88,7 +90,11 @@ class DeepNCF(nn.Module):
         prediction_vector = torch.cat(
             [mf_prediction_vector, mlp_prediction_vector], dim=-1
         )
-        # Prediction: sigmoid for interaction, without sigmoid for Rating, Better add this in the model definition
-        prediction = torch.sigmoid(self.predict_layer(prediction_vector))
+        
+        if self.binary_classification:
+            prediction = torch.sigmoid(self.predict_layer(prediction_vector))
+            return prediction
+
+        prediction = self.predict_layer(prediction_vector)
 
         return prediction

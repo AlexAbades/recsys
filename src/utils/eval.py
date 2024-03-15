@@ -1,5 +1,7 @@
 import math
 from typing import List
+import numpy as np
+from torch import Tensor
 
 
 def getHR(ranklist: List[int], gtItems: List[int]) -> int:
@@ -134,3 +136,77 @@ def getLinearIDCG(gt_scores: List[int | float]) -> float:
     for idx, rel in enumerate(gt_scores_sorted):
         idcg += (rel) / (math.log2(idx + 2))
     return idcg
+
+
+def root_mean_squared_error(
+    predictions: List[float | int] | Tensor, ground_truth: List[float | int] | Tensor
+) -> float:
+    """
+    Function to calculate the RMSE from 2 lists or tensors
+
+    Parameters:
+        - predictions (List[float | int] or Tensor): Predictions made by the model
+        - ground_truth (List[float | int] or Tensor): Ground truth values
+
+    Returns:
+        - RMSE (float): The root mean square error between predictions and ground truth
+    """
+    if len(predictions) != len(ground_truth):
+        raise ValueError("Predictions and ground truth must be of the same length.")
+
+    if isinstance(predictions, Tensor):
+        if predictions.requires_grad:
+            predictions = predictions.detach()
+        if predictions.is_cuda:
+            predictions = predictions.cpu()
+        predictions = predictions.numpy()
+
+    if isinstance(ground_truth, Tensor):
+        if ground_truth.requires_grad:
+            ground_truth = ground_truth.detach()
+        if ground_truth.is_cuda:
+            ground_truth = ground_truth.cpu()
+        ground_truth = ground_truth.numpy()
+
+    error = np.array(predictions) - np.array(ground_truth)
+    squared_error = np.square(error)
+    mean_squared_error = np.mean(squared_error)
+    root_mean_squared_error = np.sqrt(mean_squared_error)
+
+    return root_mean_squared_error
+
+
+def mean_absolute_error(predictions: List[float | int], ground_truth: List[float | int]) -> float:
+    """
+    Function that calculates the MAE for predictions and ground truth
+
+    Parameters:
+        - predictions (List[str]): List of the predictions made by the model
+        - ground_truth (List[str]): List of the ground truth.
+
+    Returns:
+        - MAE (float): Mean Absolute Error From predictions and groun truth
+    """
+
+    if len(predictions) != len(ground_truth):
+        raise ValueError("Predictions and ground truth must be of the same length.")
+
+    if isinstance(predictions, Tensor):
+        if predictions.requires_grad:
+            predictions = predictions.detach()
+        if predictions.is_cuda:
+            predictions = predictions.cpu()
+        predictions = predictions.numpy()
+
+    if isinstance(ground_truth, Tensor):
+        if ground_truth.requires_grad:
+            ground_truth = ground_truth.detach()
+        if ground_truth.is_cuda:
+            ground_truth = ground_truth.cpu()
+        ground_truth = ground_truth.numpy()
+
+    error = np.array(predictions) - np.array(ground_truth)
+    absolute_error = np.abs(error)
+    mean_absolute_error = absolute_error.mean()
+
+    return mean_absolute_error

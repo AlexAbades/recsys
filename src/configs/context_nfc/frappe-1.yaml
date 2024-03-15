@@ -1,0 +1,25 @@
+# MLP: in 32+32+21
+layers: [85, 32, 16, 8]
+
+# GMF
+num_factors: 8
+
+# Data
+processed_data_root: data/processed/frappeCtxA/
+raw_data_root: data/processed/frappe/
+num_negative_instances: 4
+
+# Training
+epochs: 100
+batch_size: 256
+lr: 0.001
+optimizer: adam
+dropout: 0
+
+# Evaluation
+topK: 10
+evaluation_threads: 1
+verbose: 1
+
+# Loss
+loss: MSE
