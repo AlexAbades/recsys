@@ -8,7 +8,7 @@ class MLP(nn.Module):
     def __init__(
         self,
         hidden_dims: int | List[int] = None,
-        dropout: float = 0.5,
+        dropout: float = 0,
         activation: Callable[..., nn.Module] = nn.ReLU,
     ):
         super().__init__()

@@ -1,3 +1,4 @@
+import numpy as np
 import torch 
 import json 
 
@@ -29,7 +30,14 @@ def calculate_memory_allocation():
     print(f"INFO: Memory Allocated: {memory_allocated:.2f} MB")
     print(f"INFO: Peak Memory Allocated: {peak_memory_allocated:.2f} MB")
 
+def json_default_serializer(obj):
+    """Custom JSON serializer for unsupported data types."""
+    if isinstance(obj, np.float32):  
+        return float(obj)  
+    raise TypeError(f"Object of type {obj.__class__.__name__} is not JSON serializable")
+
 def save_accuracy(chk_path:str, **kwargs):
-    print("Saving acuracy to", chk_path +'_acuracy.json')
-    with open(chk_path + '_acuracy.json', 'w') as file:
-        json.dump(kwargs, file)
+    print("Saving accuracy to", chk_path + '_accuracy.json')
+    with open(chk_path + '_accuracy.json', 'w') as file:
+        # Use the default parameter to specify the custom serializer
+        json.dump(kwargs, file, default=json_default_serializer)

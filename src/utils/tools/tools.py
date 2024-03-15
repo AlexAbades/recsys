@@ -1,6 +1,7 @@
+import errno
 import json
 import os
-from typing import IO, Any
+from typing import IO, Any, Tuple
 
 import yaml
 from easydict import EasyDict as edict
@@ -59,3 +60,30 @@ def get_config(config_path):
     config_name, _ = os.path.splitext(config_filename)
     config.name = config_name
     return config
+
+
+def create_checkpoint_folder(args, opts) -> Tuple[str, str]:
+    """
+    Function that creates a checkpoint folder on the specified checkpoint folder.
+    Creates checkpoint_folder/data_name/
+
+     Parameters:
+    - args (Namespace): A namespace object containing command line arguments.
+    - opts (Namespace): A namespace object containing additional options.
+    Returns:
+    - Tuple[str, str]: A tuple containing the data name extracted from the processed data path and the absolute path
+      to the created checkpoint directory.
+
+    """
+    normalized_path = os.path.normpath(args.processed_data_root)
+    data_name = os.path.basename(normalized_path)
+    check_point_path = os.path.join(ROOT_PATH, opts.checkpoint, data_name, args.name)
+    try:
+        os.makedirs(check_point_path)
+    except OSError as e:
+        if e.errno != errno.EEXIST:
+            raise RuntimeError(
+                "Unable to create checkpoint directory:", check_point_path
+            )
+
+    return data_name, check_point_path
