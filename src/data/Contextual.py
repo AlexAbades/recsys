@@ -28,7 +28,7 @@ class PreProcessDataNCFContextual:
         columns_to_normalize: List[str] = ["cnt"],
         min_interactions: int = 5,
         min_samples_test_set: int = 1,
-        interaction: bool = False,
+        binary_classification: bool = False,
         sep: str = "\t",
     ) -> None:
 
@@ -45,6 +45,7 @@ class PreProcessDataNCFContextual:
         )
         self.min_interaction = min_interactions
         self.sep = sep
+        self.binary_classification = binary_classification
         self.rawData = self._load_data(path + data_file, sep)
         self.rawMeta = self._load_data(path + meta_file, sep)
         self.data = self.create_data(
@@ -84,6 +85,12 @@ class PreProcessDataNCFContextual:
         self.train_ratings, self.test_ratings = self._initialize_train_test(
             data, min_samples_test_set
         )
+        # TODO: We could sort the data based on unser 
+
+        if self.binary_classification:
+            for user in self.test_ratings[user_column]:
+                pass
+
 
         return data
 
