@@ -11,6 +11,9 @@ src/data/raw/ml-25m/
 # Local checkpoints 
 src/checkpoints/
 
+# BashFiles
+bashfiles/old/
+
 # Notebooks
 # src/notebooks
 

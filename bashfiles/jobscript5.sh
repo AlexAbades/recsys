@@ -10,8 +10,8 @@
 #BSUB -R "span[hosts=1]"
 #BSUB -R "rusage[mem=8GB]"
 
-#BSUB -o logs/%J.out
-#BSUB -e logs/%J.err
+#BSUB -o src/logs/%J.out
+#BSUB -e src/logs/%J.err
 
 module load python3/3.10.12
 module load cuda/11.8
