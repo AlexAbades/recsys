@@ -1,5 +1,6 @@
 import errno
 import os
+import textwrap
 from typing import Dict, List, Tuple
 
 import numpy as np
@@ -7,7 +8,8 @@ import pandas as pd
 from pandas import DataFrame
 from sklearn.preprocessing import MinMaxScaler
 
-# TODO: We need a function that binarized the data
+# TODO: We need a function that binarized the data?
+
 
 class PreProcessDataNCFContextual:
     def __init__(
@@ -27,7 +29,7 @@ class PreProcessDataNCFContextual:
         ctx_numerical_columns: List[str] = ["cnt"],
         columns_to_normalize: List[str] = ["cnt"],
         min_interactions: int = 5,
-        min_samples_test_set: int = 1,
+        min_samples_per_user_test_set: int = 1,
         binary_classification: bool = False,
         sep: str = "\t",
     ) -> None:
@@ -56,7 +58,7 @@ class PreProcessDataNCFContextual:
             ctx_categorical_columns,
             ctx_numerical_columns,
             columns_to_normalize,
-            min_samples_test_set,
+            min_samples_per_user_test_set,
         )
 
     def create_data(
@@ -68,7 +70,7 @@ class PreProcessDataNCFContextual:
         ctx_categorical_columns: List[str],
         ctx_numerical_columns: List[str],
         columns_to_normalize: List[str],
-        min_samples_test_set: int,
+        min_samples_per_user_test_set: int,
     ) -> DataFrame:
 
         data = self._merge_data(self.rawData, self.rawMeta, item_column)[self.columns]
@@ -82,15 +84,14 @@ class PreProcessDataNCFContextual:
         # TODO: Do we actually neeed it?
         data = data[self.columns]
         data = self.binarize_nominal_features(data, ctx_categorical_columns)
-        self.train_ratings, self.test_ratings = self._initialize_train_test(
-            data, min_samples_test_set
+        self.train_ratings, self.test_ratings = self._initialize_leave_one_out(
+            data, min_samples_per_user_test_set
         )
-        # TODO: We could sort the data based on unser 
+        # TODO: We could sort the data based on unser
 
         if self.binary_classification:
             for user in self.test_ratings[user_column]:
                 pass
-
 
         return data
 
@@ -272,8 +273,9 @@ class PreProcessDataNCFContextual:
 
     def _initialize_train_test(self, data: DataFrame, min_samples_test_set: int):
         """
-        Funtion that splits the dataser into train/test. It ensures that no users with just one interaction
-        end up in the test set.
+        Funtion that splits the dataser into train/test.
+        Following the strategy of Leave one out - test set 1 interaction per user
+
 
         TODO: Update, we have the prefilter.
         """
@@ -297,6 +299,53 @@ class PreProcessDataNCFContextual:
         train_ratings, test_ratings = (
             data[~test_idx],
             data[test_idx],
+        )
+        return train_ratings, test_ratings
+
+    def _initialize_leave_one_out(
+        self, data: DataFrame, min_samples_test_set: int
+    ) -> Tuple[DataFrame, DataFrame]:
+        """
+        Funtion that splits the dataser into train/test.
+        Following the strategy of Leave X out for the test set.
+        If min_samples_test_set ==  1:
+            The strategy follows a leave 1 out.
+        If min_samples_test_set > 1:
+            The number of interactions is checked, if the user has more, min_samples_test_set
+            are alocated in the test set.
+
+        Parameters:
+            - data ((DataFrame): Raw or processed data to be treated
+            - min_samples_test_set (int): The number of interactions to leave in the test set x user
+
+        Return:
+            - train_ratings (DataFrame): Training Dataset
+            - test_ratings (DataFrame): Test Dataset
+
+        """
+        frequency_interaction = data.groupby(self.user_column)[self.item_column].count()
+
+        list_of_users = data[self.user_column].unique()
+
+        test_idx = []
+        for user in list_of_users:
+            num_interactions = frequency_interaction[user]
+            if num_interactions > (
+                min_samples_test_set + 1
+            ):  # should have at least one for the train test
+                element = data[data[self.user_column] == user].sample(
+                    n=min_samples_test_set
+                )
+            elif num_interactions > 2:
+                element = data[data[self.user_column] == user].sample(n=1)
+
+            test_idx.extend(element.index)
+
+        test_mask = np.isin(data.index, np.array(test_idx))
+
+        train_ratings, test_ratings = (
+            data[~test_mask],
+            data[test_mask],
         )
         return train_ratings, test_ratings
 
@@ -367,7 +416,7 @@ class PreProcessDataNCFContextual:
         data_folder_path = os.path.dirname(current_file_path)
         processed_data_path = os.path.join(data_folder_path, "processed", folder_name)
         folder_path = os.path.join(processed_data_path, folder_name)
-        print(folder_path)
+
         try:
             os.makedirs(processed_data_path)
 
@@ -378,6 +427,7 @@ class PreProcessDataNCFContextual:
                 )
         except Exception as e:
             raise RuntimeError(f"An error occurred: {e}")
+
         self.train_ratings.to_csv(
             folder_path + ".train.rating",
             index=False,
@@ -390,3 +440,48 @@ class PreProcessDataNCFContextual:
             sep=self.sep,
             header=False,
         )
+        self.create_data_info(processed_data_path)
+        print("Saved in: ", folder_path)
+
+    def create_data_info(self, processed_data_path):
+        num_users_raw = len(self.rawData[self.user_column].unique())
+        num_items_raw = len(self.rawData[self.item_column].unique())
+        num_interactions_raw = self.rawData.shape[0]
+
+        num_users_processed = len(self.data[self.user_column].unique())
+        num_items_processed = len(self.data[self.item_column].unique())
+        num_interactions_processed = self.data.shape[0]
+
+        ratio_reduction_users = (
+            (num_users_raw - num_users_processed) / num_users_raw * 100
+        )
+        ratio_reduction_items = (
+            (num_items_raw - num_items_processed) / num_items_raw * 100
+        )
+        ratio_reductions_interactions = (
+            (num_interactions_raw - num_interactions_processed)
+            / num_interactions_raw
+            * 100
+        )
+
+        content = textwrap.dedent(
+        f"""\
+        Processed dataset: Frappe \n
+        Items and Users with less than {self.min_interaction} interactions have been removed.
+        Number of Users: {num_users_processed}.
+          - Reduction: {ratio_reduction_users:.2f}%.
+        Number of Items: {num_items_processed}.
+          - Reduction: {ratio_reduction_items:.2f}%.
+        Total number of interactions: {num_interactions_processed}
+          - Reduction: {ratio_reductions_interactions:.2f}%. 
+        Columns used: {', '.join(self.columns)}."""
+        )
+
+        try:
+            with open(processed_data_path + "/ReadMe.txt", "w") as file:
+                file.write(content)
+                file.write("\n\nColumns details:\n")
+                for i, col in enumerate(self.data.columns):
+                    file.write(f"{i} - {col}\n")
+        except Exception as e:
+            raise RuntimeError(f"An error occurred: {e}")

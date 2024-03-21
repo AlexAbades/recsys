@@ -23,7 +23,7 @@ def getHR(ranklist: List[int], gtItems: List[int]) -> int:
 
 def getRR(ranklist: List[int], gtItems: List[int]) -> float | int:
     """
-    Evaluates the Reciprocal Rank of a relevant item in the ranklist
+    Evaluates the Reciprocal Rank of a relevant item in the ranklist. First Relevant Item
 
     Parameters:
     - ranklist (List[int]): List of ranked item IDs.
@@ -33,10 +33,9 @@ def getRR(ranklist: List[int], gtItems: List[int]) -> float | int:
     - float | int: 1/relK_i if gtItem is found in ranklist, 0 otherwise.
     """
     for item in ranklist:
-        if item not in gtItems:
-            return 0
-        return 1 / (gtItems.index(item) + 1)
-    return
+        if item in gtItems:
+            return 1 / (ranklist.index(item) + 1)
+    return 0
 
 
 def getBinaryDCG(ranklist: List[int], gt_items: List[int]):
@@ -176,7 +175,9 @@ def root_mean_squared_error(
     return root_mean_squared_error
 
 
-def mean_absolute_error(predictions: List[float | int], ground_truth: List[float | int]) -> float:
+def mean_absolute_error(
+    predictions: List[float | int], ground_truth: List[float | int]
+) -> float:
     """
     Function that calculates the MAE for predictions and ground truth
 
