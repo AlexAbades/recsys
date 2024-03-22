@@ -1,0 +1,26 @@
+# MLP: in 32+32+21
+layers: [85, 32, 16, 8]
+
+# GMF
+num_factors: 8
+
+# Data
+processed_data_root: data/processed/frappe5/
+raw_data_root: data/processed/frappe/
+num_negative_instances_train: 4
+num_negative_instances_test: 99  # All Data on the test set
+
+# Training
+epochs: 100
+batch_size: 256
+lr: 0.001
+optimizer: adam
+dropout: 0
+
+# Evaluation
+topK: 10
+evaluation_threads: 1
+verbose: 1
+
+# Loss
+loss: BCE
