@@ -19,4 +19,4 @@ module load cuda/11.8
 source /zhome/c0/a/164613/Desktop/recsys/venv/bin/activate
 export PYTHONPATH=/zhome/c0/a/164613/Desktop/recsys:$PYTHONPATH
 
-python src/train/nfc_train.py --config ml-1m-5.yaml
+python src/train/nfc_train.py --config configs/CNCF/frappe-inter.yaml
