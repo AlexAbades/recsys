@@ -13,8 +13,7 @@ from torch.utils.data import DataLoader, TensorDataset
 
 from src.data.ContextDataLoader import ContextDataLoader
 from src.models.contextNFC.context_nfc import DeepNCF
-from src.utils.eval import (getHR, getLinearDCG, getLinearIDCG, getRR,
-                            mean_absolute_error, root_mean_squared_error)
+from src.utils.eval import mean_absolute_error, root_mean_squared_error
 from src.utils.model_stats.stats import save_accuracy, save_checkpoint
 from src.utils.tools.tools import (ROOT_PATH, create_checkpoint_folder,
                                    get_config)
@@ -33,7 +32,7 @@ def parse_args():
     parser.add_argument(
         "--config",
         type=str,
-        default="configs/context_nfc/frappe-1.yaml",
+        default="configs/CNCF_R/frappe-1.yaml",
         help="Path to the config file.",
     )
     opts = parser.parse_args()
@@ -118,7 +117,7 @@ def train_with_config(args, opts):
         num_context=num_context,
         mf_dim=args.num_factors,
         layers=args.layers,
-        binary_classification=False
+        binary_classification=False,
     ).to(_device)
 
     # Initialize Optimizer and Loss function
@@ -211,8 +210,8 @@ def evaluate_model(model_pos, data_loader):
             predictions = model_pos(user_input, item_input, context_input)
 
             # Evaluate
-            rsme = root_mean_squared_error(ratings, predictions)
-            mae = mean_absolute_error(ratings, predictions)
+            rsme = root_mean_squared_error(predictions, ratings)
+            mae = mean_absolute_error(predictions, ratings)
             rsme_all.append(rsme)
             mae_all.append(mae)
 
@@ -223,5 +222,3 @@ if __name__ == "__main__":
     opts = parse_args()
     args = get_config(opts.config)
     train_with_config(args, opts)
-
-    

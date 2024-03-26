@@ -11,6 +11,12 @@ class MLP(nn.Module):
         dropout: float = 0,
         activation: Callable[..., nn.Module] = nn.ReLU,
     ):
+        """
+        Multi Layer Perceptron
+
+        Parameters:
+            - hidden_dims (int | List[int]): Dimensions of the Neural Network (NN)
+        """
         super().__init__()
 
         layers = nn.ModuleList()

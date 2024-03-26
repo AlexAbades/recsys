@@ -195,7 +195,7 @@ def train_with_config(args, opts):
     for epoch in range(args.epochs):
         print("Training epoch %d." % epoch)
         start_time = time()
-
+        # TODO: We have to actualize in each epoch the data. 
         # Curriculum Learning
         train_epoch(optimizers, loss_fn, train_loader, model, losses)
 
@@ -240,7 +240,7 @@ def train_with_config(args, opts):
                 epoch=epoch,
             )
 
-            # Save best Model based on RSME
+            # Save best Model based on HR
             if hr < best_hr:
                 best_hr = hr
                 save_checkpoint(

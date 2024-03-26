@@ -6,6 +6,7 @@ from typing import Dict, List, Tuple
 import numpy as np
 import pandas as pd
 from pandas import DataFrame
+from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
 
 # TODO: We need a function that binarized the data?
@@ -74,7 +75,8 @@ class PreProcessDataNCFContextual:
     ) -> DataFrame:
 
         data = self._merge_data(self.rawData, self.rawMeta, item_column)[self.columns]
-        data = self.clear_ratings(data, ratings_colum)
+        # TODO: We can move the clear rating at the end with before the train test split 
+        data = self._clear_ratings(data, ratings_colum)
         data = self._log_numerical(data, ctx_numerical_columns)
         data = self._normalize_columns(data, columns_to_normalize)
         data = self._initialize_iterative_cleaning(
@@ -84,8 +86,10 @@ class PreProcessDataNCFContextual:
         # TODO: Do we actually neeed it?
         data = data[self.columns]
         data = self.binarize_nominal_features(data, ctx_categorical_columns)
-        self.train_ratings, self.test_ratings = self._initialize_leave_one_out(
-            data, min_samples_per_user_test_set
+        self.train_ratings, self.test_ratings = (
+            self._initialize_leave_one_out_train_test_split(
+                data, min_samples_per_user_test_set
+            )
         )
         # TODO: We could sort the data based on unser
 
@@ -133,7 +137,7 @@ class PreProcessDataNCFContextual:
             clean_columns.extend(i)
         return clean_columns
 
-    def clear_ratings(self, df: DataFrame, rating_column: str) -> DataFrame:
+    def _clear_ratings(self, df: DataFrame, rating_column: str) -> DataFrame:
         df[rating_column] = pd.to_numeric(df[rating_column], errors="coerce")
         df = df.dropna(subset=[rating_column])
         return df
@@ -302,11 +306,11 @@ class PreProcessDataNCFContextual:
         )
         return train_ratings, test_ratings
 
-    def _initialize_leave_one_out(
+    def _initialize_leave_one_out_train_test_split(
         self, data: DataFrame, min_samples_test_set: int
     ) -> Tuple[DataFrame, DataFrame]:
         """
-        Funtion that splits the dataser into train/test.
+        Function that splits the dataser into train/test.
         Following the strategy of Leave X out for the test set.
         If min_samples_test_set ==  1:
             The strategy follows a leave 1 out.
@@ -321,7 +325,6 @@ class PreProcessDataNCFContextual:
         Return:
             - train_ratings (DataFrame): Training Dataset
             - test_ratings (DataFrame): Test Dataset
-
         """
         frequency_interaction = data.groupby(self.user_column)[self.item_column].count()
 
@@ -348,6 +351,25 @@ class PreProcessDataNCFContextual:
             data[test_mask],
         )
         return train_ratings, test_ratings
+
+    def _initialize_standard_train_test_split(
+        self, data: DataFrame, test_size: float, random_state: int
+    ) -> Tuple[DataFrame, DataFrame]:
+        """ "
+         Performs a train test split on the data set using sklearn train test split.
+
+        Parameters:
+             - data ((DataFrame): Raw or processed data to be treated
+             - min_samples_test_set (int): The number of interactions to leave in the test set x user
+
+         Return:
+             - train_ratings (DataFrame): Training Dataset
+             - test_ratings (DataFrame): Test Dataset
+        """
+        X_train, X_test = train_test_split(
+            data, test_size=test_size, random_state=random_state
+        )
+        return X_train, X_test
 
     def _map_elementIDs(self, data: DataFrame, column_to_map: str) -> Dict:
         """
@@ -465,7 +487,7 @@ class PreProcessDataNCFContextual:
         )
 
         content = textwrap.dedent(
-        f"""\
+            f"""\
         Processed dataset: Frappe \n
         Items and Users with less than {self.min_interaction} interactions have been removed.
         Number of Users: {num_users_processed}.

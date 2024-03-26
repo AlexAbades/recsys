@@ -77,7 +77,7 @@ def create_checkpoint_folder(args, opts) -> Tuple[str, str]:
     """
     normalized_path = os.path.normpath(args.processed_data_root)
     data_name = os.path.basename(normalized_path)
-    check_point_path = os.path.join(ROOT_PATH, opts.checkpoint, data_name, args.name)
+    check_point_path = os.path.join(ROOT_PATH, opts.checkpoint, data_name, args.foldername)
     try:
         os.makedirs(check_point_path)
     except OSError as e:

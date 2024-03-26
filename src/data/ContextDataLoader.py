@@ -15,10 +15,9 @@ class ContextDataLoader(Dataset):
         self.items = torch.tensor(self.data.iloc[:, 1].values, dtype=torch.long)
         self.num_items = len(self.items.unique())
         self.ratings = torch.tensor(self.data.iloc[:, 2].values, dtype=torch.float)
-        
-        # Convert context features, ensuring they're numeric (float)
+        # Context
         context_data = self.data.iloc[:, 3:].values.astype(float)
-        self.contexts = torch.tensor(context_data, dtype=torch.long)
+        self.contexts = torch.tensor(context_data, dtype=torch.float)  # Changed to float. The cnt (1st column) has to be float
         self.num_context = self.contexts.shape[1]
 
     def _load_data(self, data_path, sep) -> DataFrame:

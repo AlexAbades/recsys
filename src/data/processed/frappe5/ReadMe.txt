@@ -1,12 +1,12 @@
 Processed dataset: Frappe 
 
-Items and Users with less than 2 interactions have been removed.
-Number of Users: 785.
-  - Reduction: 17.97%.
-Number of Items: 1837.
-  - Reduction: 55.00%.
-Total number of interactions: 87566
-  - Reduction: 8.98%. 
+Items and Users with less than 5 interactions have been removed.
+Number of Users: 651.
+  - Reduction: 31.97%.
+Number of Items: 1127.
+  - Reduction: 72.39%.
+Total number of interactions: 84373
+  - Reduction: 12.30%. 
 Columns used: user, item, rating, daytime, weather, isweekend, homework, cnt.
 
 Columns details:
@@ -25,13 +25,12 @@ Columns details:
 12 - weather_drizzle
 13 - weather_foggy
 14 - weather_rainy
-15 - weather_sleet
-16 - weather_snowy
-17 - weather_stormy
-18 - weather_sunny
-19 - weather_unknown
-20 - isweekend_weekend
-21 - isweekend_workday
-22 - homework_home
-23 - homework_unknown
-24 - homework_work
+15 - weather_snowy
+16 - weather_stormy
+17 - weather_sunny
+18 - weather_unknown
+19 - isweekend_weekend
+20 - isweekend_workday
+21 - homework_home
+22 - homework_unknown
+23 - homework_work
