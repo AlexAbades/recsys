@@ -1,6 +1,5 @@
 # venv
 venv/
-testenv/
 
 # Debug files 
 .vscode/
@@ -10,12 +9,10 @@ src/data/raw/ml-25m/
 
 # Local checkpoints 
 src/checkpoints/
+src/notebooks/
 
 # BashFiles
 bashfiles/old/
-
-# Notebooks
-# src/notebooks
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
