@@ -58,12 +58,12 @@ class ContextDataLoaderBinaryClasifictaion(Dataset):
 
             # User, item, rating Train
             self.train_ratings = self.train_data.iloc[:, 2].values
-
+            # TODO: self.trainContext not used
             # Context Features Train
-            self.test_context_data = self.train_data.iloc[:, 3:]
+            self.train_context_data = self.train_data.iloc[:, 3:]
             self.trainContext = torch.tensor(
-                self.test_context_data.values.astype(int),
-                dtype=torch.long,  # should we can change to float? context comes from one-hot encoding
+                self.train_context_data.values.astype(float),
+                dtype=torch.float,  # should we can change to float? context comes from one-hot encoding
             )
 
             self.num_context = self.trainContext.shape[1]
@@ -87,7 +87,7 @@ class ContextDataLoaderBinaryClasifictaion(Dataset):
             # Context Features Test
             self.test_context_data = self.test_data.iloc[:, 3:]
             self.test_context = torch.tensor(
-                self.test_context_data.values.astype(int), dtype=torch.long
+                self.test_context_data.values.astype(float), dtype=torch.float
             )
             self.num_context = self.test_context.shape[1]
 
@@ -148,13 +148,13 @@ class ContextDataLoaderBinaryClasifictaion(Dataset):
         """
         # Create Context
         context_repeated_index = np.repeat(
-            self.test_context_data.index, (self.num_negative_samples + 1)
+            self.train_context_data.index, (self.num_negative_samples + 1)
         )
-        expanded_context = self.test_context_data.loc[
+        expanded_context = self.train_context_data.loc[
             context_repeated_index
         ].reset_index(drop=True)
         self.extended_context = torch.tensor(
-            expanded_context.values.astype(float), dtype=torch.long
+            expanded_context.values.astype(float), dtype=torch.float
         )
 
         # Initialize new sets

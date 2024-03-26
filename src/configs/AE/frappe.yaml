@@ -1,0 +1,25 @@
+# Name 
+foldername: frap-no-init-weights-b512-2
+
+# Encoder
+layers: [21, 9]
+
+# Data
+processed_data_root: data/processed/frappeCtxA/
+raw_data_root: data/processed/frappe/
+
+# Training
+epochs: 100
+batch_size: 512
+lr: 0.0001
+optimizer: adam
+dropout: 0
+noise: False
+init_weights: True
+
+
+# Evaluation
+verbose: 1
+
+# Loss
+loss: MSE

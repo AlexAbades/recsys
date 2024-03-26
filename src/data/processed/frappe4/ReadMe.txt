@@ -1,12 +1,12 @@
 Processed dataset: Frappe 
 
-Items and Users with less than 3 interactions have been removed.
-Number of Users: 739.
-  - Reduction: 22.78%.
-Number of Items: 1524.
-  - Reduction: 62.67%.
-Total number of interactions: 86497
-  - Reduction: 10.09%. 
+Items and Users with less than 4 interactions have been removed.
+Number of Users: 689.
+  - Reduction: 28.00%.
+Number of Items: 1279.
+  - Reduction: 68.67%.
+Total number of interactions: 85322
+  - Reduction: 11.31%. 
 Columns used: user, item, rating, daytime, weather, isweekend, homework, cnt.
 
 Columns details:
