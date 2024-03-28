@@ -12,11 +12,13 @@ src/data/raw/CARS/
 # Local checkpoints 
 src/checkpoints/
 
+# logs 
+src/logs/
+
 # BashFiles
 bashfiles/old/
 
 # Byte-compiled / optimized / DLL files
 *__pycache__/*
 *.py[cod]
-*.pyc
 *$py.class
