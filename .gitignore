@@ -6,7 +6,7 @@ venv/
 
 # Raw Data 
 src/data/raw/ml-25m/
-src/data/raw/Yelp/
+src/data/raw/YELP/
 src/data/raw/CARS/
 
 # Local checkpoints 
@@ -16,6 +16,7 @@ src/checkpoints/
 bashfiles/old/
 
 # Byte-compiled / optimized / DLL files
-__pycache__/
+*__pycache__/*
 *.py[cod]
+*.pyc
 *$py.class
