@@ -6,10 +6,11 @@ venv/
 
 # Raw Data 
 src/data/raw/ml-25m/
+src/data/raw/Yelp/
+src/data/raw/CARS/
 
 # Local checkpoints 
 src/checkpoints/
-src/notebooks/
 
 # BashFiles
 bashfiles/old/

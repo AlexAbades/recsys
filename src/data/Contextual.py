@@ -13,6 +13,10 @@ from sklearn.preprocessing import MinMaxScaler
 
 
 class PreProcessDataNCFContextual:
+    """
+    Preprocess script.
+    Given a data set with categorical and numercial features the script performs a filtering, data transformation, normalization, and one-hot encoding on the dataset.
+    """
     def __init__(
         self,
         path: str,
@@ -77,6 +81,7 @@ class PreProcessDataNCFContextual:
         data = self._merge_data(self.rawData, self.rawMeta, item_column)[self.columns]
         # TODO: We can move the clear rating at the end with before the train test split 
         data = self._clear_ratings(data, ratings_colum)
+        # TODO: Create an attribute for that. 
         data = self._log_numerical(data, ctx_numerical_columns)
         data = self._normalize_columns(data, columns_to_normalize)
         data = self._initialize_iterative_cleaning(
