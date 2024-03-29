@@ -1,3 +1,4 @@
+import os
 from datetime import datetime
 
 import holidays
@@ -77,9 +78,7 @@ def get_season(date):
 
 if __name__ == "__main__":
 
-    print(ROOT_PATH)
-
-    # # Load datasets
+    # Load datasets
     df_review = pd.read_csv(
         ROOT_PATH + "/data/raw/YELP/yelp_academic_dataset_review.csv"
     )
@@ -115,6 +114,9 @@ if __name__ == "__main__":
     data["week_number"] = data["date"].dt.isocalendar().week
     # Obtain Holidays
     data["holiday_status"] = data.apply(is_holiday, axis=1)
+    # Transofrm number Friends + elite
+    data['num_elite'] = data.elite.apply(lambda x: len(x.split(',')) if not pd.isna(x) else 0)
+    data['num_firends'] = data.friends.apply(lambda x: len(x.split(',')) if not pd.isna(x) else 0)
     # Obtain season
     data["season"] = data["date"].apply(get_season)
     # Obtain Seniority on app
@@ -141,4 +143,7 @@ if __name__ == "__main__":
     ]
     data[columns]
     # Save csv
-    data.to_csv(ROOT_PATH+'/data/processed/Yelp/data.csv')
+    directory_path = os.path.join(ROOT_PATH, 'data/processed/Yelp/data.csv')
+    print(directory_path)
+    os.makedirs(directory_path, exist_ok=True)
+    data.to_csv(directory_path)
