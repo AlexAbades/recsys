@@ -86,7 +86,7 @@ if __name__ == "__main__":
     df_business = pd.read_csv(
         ROOT_PATH + "/data/raw/YELP/yelp_academic_dataset_business.csv"
     )
-
+    print("Data Loaded")
     # Context of the user
     user_cols = ["user_id", "elite", "yelping_since", "friends"]
     # Location
@@ -101,30 +101,47 @@ if __name__ == "__main__":
         how="inner",
         suffixes=["_review", "_user"],
     )
+    print("First Merge done")
+    
+    del df_review, df_user
+    print('Variables deleted')
+
     # Merge
     data = pd.merge(merged_df, df_business[business_col], on="business_id", how="inner")
+    print("Second Merge done")
+    del df_business
+    print('Variables deleted')
     # Transform to date
     data["date"] = pd.to_datetime(data["date"])
     data["yelping_since"] = pd.to_datetime(data["yelping_since"])
+    print('Date Transformed')
     # Classify workday/weekend
     data["isweekend"] = data["date"].dt.dayofweek.apply(classify_day)
+    print('Weekend/worrkday done')
     # Classify daytime
     data["daytime"] = data["date"].apply(lambda x: classify_time_of_day(x))
+    print('Daytime done')
     # Obtain weeknumber
     data["week_number"] = data["date"].dt.isocalendar().week
+    print('week_number done')
     # Obtain Holidays
     data["holiday_status"] = data.apply(is_holiday, axis=1)
+    print('holiday_status done')
     # Transofrm number Friends + elitegit a
     data['num_elite'] = data.elite.apply(lambda x: len(x.split(',')) if not pd.isna(x) else 0)
     data['num_firends'] = data.friends.apply(lambda x: len(x.split(',')) if not pd.isna(x) else 0)
+    print('num_elite & num_firends done')
     # Obtain season
     data["season"] = data["date"].apply(get_season)
+    print('season done')
     # Obtain Seniority on app
     max_date = data.date.max().year
     data["seniority"] = data["yelping_since"].apply(lambda x: max_date - x.year)
+    print('seniority done')
     # Transform uuid4
     data["userId"] = pd.factorize(data["user_id"])[0]
     data["businessId"] = pd.factorize(data["business_id"])[0]
+    print('Ids Transformation done')
     # Filter desired columns
     columns = [
         "userId",
@@ -147,3 +164,4 @@ if __name__ == "__main__":
     print(directory_path)
     os.makedirs(directory_path, exist_ok=True)
     data.to_csv(directory_path)
+    print(f'saved into {directory_path}')
