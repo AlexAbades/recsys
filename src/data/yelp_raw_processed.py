@@ -114,7 +114,7 @@ if __name__ == "__main__":
     data["week_number"] = data["date"].dt.isocalendar().week
     # Obtain Holidays
     data["holiday_status"] = data.apply(is_holiday, axis=1)
-    # Transofrm number Friends + elite
+    # Transofrm number Friends + elitegit a
     data['num_elite'] = data.elite.apply(lambda x: len(x.split(',')) if not pd.isna(x) else 0)
     data['num_firends'] = data.friends.apply(lambda x: len(x.split(',')) if not pd.isna(x) else 0)
     # Obtain season
