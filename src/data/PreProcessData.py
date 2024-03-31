@@ -39,8 +39,8 @@ class PreProcessDataNCF:
         self.rawData = self._load_data(data_path, sep=",")
         self.ratings = self._binarize_data()
 
-    def _load_data(self, data_path):
-        return pd.read_csv(filepath_or_buffer=data_path)
+    def _load_data(self, data_path, sep):
+        return pd.read_csv(filepath_or_buffer=data_path, sep=sep)
 
     def split_traintest(self):
         """
@@ -201,5 +201,5 @@ class PreProcessDataNCF:
             Number of Interactions: {num_interactions_test}
             """
         )
-        
+
         return content

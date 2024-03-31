@@ -1,4 +1,19 @@
 
+columns = [
+        "userId",
+        "businessId",
+        "stars",
+        "latitude",
+        "longitude",
+        "isweekend",
+        "daytime",
+        "week_number",
+        "season",
+        "holiday_status",
+        "num_firends",
+        "num_elite",
+        "seniority",
+    ]
 
 
 class PreProcessDataNCF:
