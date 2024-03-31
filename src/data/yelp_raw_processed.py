@@ -162,12 +162,12 @@ if __name__ == "__main__":
         "num_elite",
         "seniority",
     ]
-    data[columns]
+    
     # Save csv
     os.makedirs(data_processed_folder, exist_ok=True)
     print(f"Attempting to save in directory: {data_processed_folder}")
     try:
-        data.to_csv(data_processed_folder + file_name)
+        data[columns].to_csv(data_processed_folder + file_name)
         print(f"saved into {data_processed_folder, file_name}")
     except Exception as e:
         print(f"The following Problem occured {e}")
