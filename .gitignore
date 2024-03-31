@@ -15,6 +15,9 @@ src/checkpoints/
 # logs 
 src/logs/
 
+# Other or Older data Preprocess
+src/data/older/
+
 # BashFiles
 bashfiles/old/
 

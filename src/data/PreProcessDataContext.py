@@ -15,7 +15,11 @@ from sklearn.preprocessing import MinMaxScaler
 class PreProcessDataNCFContextual:
     """
     Preprocess script.
-    Given a data set with categorical and numercial features the script performs a filtering, data transformation, normalization, and one-hot encoding on the dataset.
+    Given a data set with categorical and numercial features the script performs filtering, 
+    data transformation, normalization, and one-hot encoding on the dataset.
+
+    TODO: We have to modify the function so it also accepts one file with all features.
+    
     """
     def __init__(
         self,

@@ -8,7 +8,11 @@ from torch.utils.data import Dataset
 import os
 
 
-class ContextDataLoaderBinaryClasifictaion(Dataset):
+class ContextInteractionDataLoader(Dataset):
+    """
+    Data Loader that given 2 Files. Inititalized a train or a test dateset.
+    For the test set it can be specifyed the number of negative instances.  
+    """
 
     def __init__(
         self,

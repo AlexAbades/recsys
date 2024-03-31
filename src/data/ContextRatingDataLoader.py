@@ -4,7 +4,7 @@ from pandas import DataFrame
 from torch.utils.data import Dataset
 
 
-class ContextDataLoader(Dataset):
+class ContextRatingDataLoader(Dataset):
     def __init__(self, data_path: str, sep: str = "\t") -> None:
         super().__init__()
         self.data = self._load_data(data_path, sep)

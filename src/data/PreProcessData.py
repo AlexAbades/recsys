@@ -1,6 +1,7 @@
 import errno
 import os
 import random
+import textwrap
 from typing import List, Tuple
 
 import numpy as np
@@ -8,6 +9,10 @@ import pandas as pd
 
 
 class PreProcessDataNCF:
+    """
+    Class to preprocess the data into a suitable format for the Neural Collaborative Filtering
+    """
+
     def __init__(
         self,
         data_path: str = None,
@@ -31,16 +36,17 @@ class PreProcessDataNCF:
         self.item_column = item_column
         self.interaction_column = interaction_column
         self.sep = sep
-        self.rawData = self._load_data(data_path)
+        self.rawData = self._load_data(data_path, sep=",")
         self.ratings = self._binarize_data()
 
     def _load_data(self, data_path):
-        return pd.read_csv(filepath_or_buffer=data_path, sep=self.sep)
+        return pd.read_csv(filepath_or_buffer=data_path)
 
     def split_traintest(self):
         """
-        Funtion that splits the dataser into train/test. It ensures that no users with just one interaction
-        end up in the test set.
+        Funtion that splits the dataser into train/test. It ensures that no users with just one
+        interaction end up in the test set.
+        It folows a leave one out strategy
 
         """
         frequency_interaction = self.ratings.groupby(self.user_column)[
@@ -120,6 +126,10 @@ class PreProcessDataNCF:
         processed_data_path = os.path.join(data_folder_path, "processed", folder_name)
         folder_path = os.path.join(processed_data_path, folder_name)
         print(folder_path)
+
+        # Total
+        content = self.data_details()
+
         try:
             os.makedirs(processed_data_path)
 
@@ -148,3 +158,48 @@ class PreProcessDataNCF:
             sep=self.sep,
             header=False,
         )
+
+        try:
+            with open(processed_data_path + "/ReadMe.txt", "w") as file:
+                file.write(content)
+                file.write("\n\nColumns details:\n")
+                for i, col in enumerate(self.ratings.columns):
+                    file.write(f"{i} - {col}\n")
+        except Exception as e:
+            raise RuntimeError(f"An error occurred: {e}")
+
+    def data_details(self):
+        num_users = len(self.ratings[self.user_column].unique())
+        num_items = len(self.ratings[self.item_column].unique())
+        num_interactions = self.ratings.shape[0]
+
+        # Train
+        num_users_train = len(self.train_ratings[self.user_column].unique())
+        num_items_train = len(self.train_ratings[self.item_column].unique())
+        num_interactions_train = self.train_ratings.shape[0]
+
+        # Test
+        num_users_test = len(self.test_ratings[self.user_column].unique())
+        num_items_test = len(self.test_negative[self.item_column].unique())
+        num_interactions_test = self.test_ratings.shape[0]
+
+        content = textwrap.dedent(
+            f"""\
+            Processed Dataset: YELP \n
+            Number of Users: {num_users}
+            Number of Items: {num_items}
+            Number of Interactions: {num_interactions}
+            \n
+            Train set:
+            Number of Users: {num_users_train}
+            Number of Items: {num_items_train}
+            Number of Interactions: {num_interactions_train}
+            \n 
+            Train set:
+            Number of Users: {num_users_test}
+            Number of Items: {num_items_test}
+            Number of Interactions: {num_interactions_test}
+            """
+        )
+        
+        return content
