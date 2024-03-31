@@ -20,7 +20,7 @@ class PreProcessDataNCF:
         item_column: str = "item",
         interaction_column: str = "cnt",
         sep: str = "\t",
-        n_rows: int = 10000,
+        n_rows: int = None,
     ):
         """
         Initialize a class to pre-process data and convert it into
@@ -62,7 +62,7 @@ class PreProcessDataNCF:
         )
         idx = []
         for i in users_more_one_interaction:
-            element = self.ratings[self.ratings["user"] == i].sample(n=1)
+            element = self.ratings[self.ratings[self.user_column] == i].sample(n=1)
             idx.append(element.index[0])
 
         test_idx = np.isin(self.ratings.index, np.array(idx))
@@ -181,7 +181,7 @@ class PreProcessDataNCF:
 
         # Test
         num_users_test = len(self.test_ratings[self.user_column].unique())
-        num_items_test = len(self.test_negative[self.item_column].unique())
+        num_items_test = len(self.test_ratings[self.item_column].unique())
         num_interactions_test = self.test_ratings.shape[0]
 
         content = textwrap.dedent(
