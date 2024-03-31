@@ -20,6 +20,7 @@ class PreProcessDataNCF:
         item_column: str = "item",
         interaction_column: str = "cnt",
         sep: str = "\t",
+        n_rows: int = 10000,
     ):
         """
         Initialize a class to pre-process data and convert it into
@@ -36,11 +37,11 @@ class PreProcessDataNCF:
         self.item_column = item_column
         self.interaction_column = interaction_column
         self.sep = sep
-        self.rawData = self._load_data(data_path, sep=",")
+        self.rawData = self._load_data(data_path, sep=",", n_rows=n_rows)
         self.ratings = self._binarize_data()
 
-    def _load_data(self, data_path, sep):
-        return pd.read_csv(filepath_or_buffer=data_path, sep=sep)
+    def _load_data(self, data_path, sep, n_rows):
+        return pd.read_csv(filepath_or_buffer=data_path, sep=sep, nrows=n_rows)
 
     def split_traintest(self):
         """
