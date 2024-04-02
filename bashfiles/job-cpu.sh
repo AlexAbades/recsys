@@ -19,4 +19,4 @@ module load cuda/11.8
 source /zhome/c0/a/164613/Desktop/recsys/venv/bin/activate
 export PYTHONPATH=/zhome/c0/a/164613/Desktop/recsys:$PYTHONPATH
 
-python src/data/yelp_raw_processed.py
+python python src/data.py

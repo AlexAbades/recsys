@@ -70,6 +70,19 @@ class PreProcessDataNCFContextual:
             min_samples_per_user_test_set,
         )
 
+    def _load_datasets(self, path, data_file, meta_file, sep):
+        if data_file:
+            self.rawData = self._load_data(path + data_file, sep)
+        if meta_file:
+            self.rawMeta = self._load_data(path + meta_file, sep)
+        if data_file and meta_file:
+            data = self._merge_data(self.rawData, self.rawMeta, self.item_column)[self.columns]
+        
+        
+        
+
+
+
     def create_data(
         self,
         user_column: str,
@@ -81,6 +94,7 @@ class PreProcessDataNCFContextual:
         columns_to_normalize: List[str],
         min_samples_per_user_test_set: int,
     ) -> DataFrame:
+        
 
         data = self._merge_data(self.rawData, self.rawMeta, item_column)[self.columns]
         # TODO: We can move the clear rating at the end with before the train test split 
@@ -114,11 +128,11 @@ class PreProcessDataNCFContextual:
         """
         return pd.read_csv(data_path, sep=sep)
 
-    def _merge_data(self, data, metadata, item_column) -> DataFrame:
+    def _merge_data(self, data, metadata, key_column) -> DataFrame:
         """
         Function that given 2 datasets it merges them
         """
-        dataframe = data.merge(metadata, on=item_column)
+        dataframe = data.merge(metadata, on=key_column)
         return dataframe
 
     def _clean_columns(self, *args: str | List[str] | Tuple[str]) -> List[str]:
