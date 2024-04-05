@@ -11,7 +11,7 @@ from torch.nn import Module
 from torch.optim import Optimizer
 from torch.utils.data import DataLoader, TensorDataset
 
-from src.data.ContextDataLoader import ContextDataLoader
+from src.data.ContextRatingDataLoader import ContextRatingDataLoader
 from src.models.contextNFC.context_nfc import DeepNCF
 from src.utils.eval import mean_absolute_error, root_mean_squared_error
 from src.utils.model_stats.stats import save_accuracy, save_checkpoint
@@ -98,8 +98,8 @@ def train_with_config(args, opts):
     print(f"Running in device: {_device}")
 
     # Load preprocessed Data
-    train_data = ContextDataLoader(processed_data_path + ".train.rating")
-    test_data = ContextDataLoader(processed_data_path + ".test.rating")
+    train_data = ContextRatingDataLoader(processed_data_path + ".train.rating")
+    test_data = ContextRatingDataLoader(processed_data_path + ".test.rating")
 
     # Dataloader
     train_loader = DataLoader(train_data, args.batch_size)

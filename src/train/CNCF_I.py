@@ -12,8 +12,8 @@ from torch.nn import Module
 from torch.optim import Optimizer
 from torch.utils.data import DataLoader
 
-from src.data.BinaryClassifictionDataLoader import \
-    ContextDataLoaderBinaryClasifictaion
+from src.data.ContextInteractionDataLoader import \
+    ContextInteractionDataLoader
 from src.models.contextNFC.context_nfc import DeepNCF
 from src.utils.eval import getBinaryDCG, getHR, getRR
 from src.utils.model_stats.stats import save_accuracy, save_checkpoint
@@ -155,10 +155,10 @@ def train_with_config(args, opts):
     print(f"Running in device: {_device}")
 
     # Load preprocessed Data
-    train_data = ContextDataLoaderBinaryClasifictaion(
+    train_data = ContextInteractionDataLoader(
         processed_data_path, split="train"
     )
-    test_data = ContextDataLoaderBinaryClasifictaion(
+    test_data = ContextInteractionDataLoader(
         processed_data_path,
         split="test",
         num_negative_samples=99,
