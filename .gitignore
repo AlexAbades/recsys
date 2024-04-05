@@ -9,6 +9,9 @@ src/data/raw/ml-25m/
 src/data/raw/YELP/
 src/data/raw/CARS/
 
+# PreProcessed Data 
+src/data/processed/YELP/
+
 # Local checkpoints 
 src/checkpoints/
 

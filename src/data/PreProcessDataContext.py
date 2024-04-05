@@ -1,6 +1,7 @@
 import errno
 import os
 import textwrap
+import warnings
 from typing import Dict, List, Tuple
 
 import numpy as np
@@ -9,79 +10,93 @@ from pandas import DataFrame
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
 
-# TODO: We need a function that binarized the data?
-
 
 class PreProcessDataNCFContextual:
     """
     Preprocess script.
-    Given a data set with categorical and numercial features the script performs filtering, 
+    Given a data set with categorical and numercial features the script performs filtering,
     data transformation, normalization, and one-hot encoding on the dataset.
 
-    TODO: We have to modify the function so it also accepts one file with all features.
-    
+    Parameters:
+    - columns_to_transform (dict): A dictionary containg the transofrmation and the columns to transform
+    {
+        'log': ['cnt'],
+        'cyclical':['weeknumber', 'friends']
+    }
+
     """
+
     def __init__(
         self,
         path: str,
-        data_file: str = "frappe.csv",
-        meta_file: str = "meta.csv",
-        user_column: str = "user",
-        item_column: str = "item",
-        ratings_colum: str = "rating",
-        ctx_categorical_columns: List[str] = [
-            "daytime",
-            "weather",
-            "isweekend",
-            "homework",
-        ],
-        ctx_numerical_columns: List[str] = ["cnt"],
-        columns_to_normalize: List[str] = ["cnt"],
+        data_file: str = None,
+        meta_file: str = None,
+        key_column: str = None,
+        user_column: str = None,
+        item_column: str = None,
+        ratings_column: str = None,
+        ctx_categorical_columns: List[str] = None,
+        ctx_numerical_columns: List[str] = None,
+        columns_to_transform: Dict[str, str | List[str]] = None,
+        columns_to_normalize: List[str] = None,
         min_interactions: int = 5,
         min_samples_per_user_test_set: int = 1,
-        binary_classification: bool = False,
+        is_binary_classification: bool = True,
+        train_test_split: str = "loo",
         sep: str = "\t",
+        test_size: int = 0.2,
     ) -> None:
 
+        # Check of required parameters
+        self._check_required_paremeters(
+            path=path,
+            data_file=data_file,
+            user_column=user_column,
+            item_column=item_column,
+            ratings_column=ratings_column,
+        )
+        self.columns_to_transform = columns_to_transform or {}
+        self.encodings = {
+            "log": self._logarithmic_encoding,
+            "cyclical": self._cyclical_encoding_inplace,
+        }
+        self._check_transformation_functions()
+
         self.path = path
-        self.ratings_column = ratings_colum
+        self.ratings_column = ratings_column
         self.user_column = user_column
         self.item_column = item_column
+        self.min_interaction = min_interactions
+        self.sep = sep
+        self.is_binary_classification = is_binary_classification
+        self.train_test_split = train_test_split
+        self.test_size = test_size
+        self.key_column = key_column
+
         self.columns = self._clean_columns(
             user_column,
             item_column,
-            ratings_colum,
+            ratings_column,
             ctx_categorical_columns,
             ctx_numerical_columns,
         )
-        self.min_interaction = min_interactions
-        self.sep = sep
-        self.binary_classification = binary_classification
-        self.rawData = self._load_data(path + data_file, sep)
-        self.rawMeta = self._load_data(path + meta_file, sep)
+        self._load_datasets(
+            path=path,
+            meta_file=meta_file,
+            data_file=data_file,
+            sep=self.sep,
+        )
         self.data = self.create_data(
-            user_column,
-            item_column,
-            ratings_colum,
-            min_interactions,
-            ctx_categorical_columns,
-            ctx_numerical_columns,
-            columns_to_normalize,
-            min_samples_per_user_test_set,
+            user_column=user_column,
+            item_column=item_column,
+            ratings_colum=ratings_column,
+            min_interactions=min_interactions,
+            ctx_categorical_columns=ctx_categorical_columns,
+            ctx_numerical_columns=ctx_numerical_columns,
+            columns_to_transform=columns_to_transform,
+            columns_to_normalize=columns_to_normalize,
+            min_samples_per_user_test_set=min_samples_per_user_test_set,
         )
-
-    def _load_datasets(self, path, data_file, meta_file, sep):
-        if data_file:
-            self.rawData = self._load_data(path + data_file, sep)
-        if meta_file:
-            self.rawMeta = self._load_data(path + meta_file, sep)
-        if data_file and meta_file:
-            data = self._merge_data(self.rawData, self.rawMeta, self.item_column)[self.columns]
-        
-        
-        
-
-
 
     def create_data(
         self,
@@ -89,37 +104,98 @@ class PreProcessDataNCFContextual:
         item_column: str,
         ratings_colum: str,
         min_interactions: int,
-        ctx_categorical_columns: List[str],
-        ctx_numerical_columns: List[str],
-        columns_to_normalize: List[str],
+        ctx_categorical_columns: List[str] | None,
+        ctx_numerical_columns: List[str] | None,
+        columns_to_transform: Dict[str, List[str]] | None,
+        columns_to_normalize: List[str] | None,  # This should be all Numerical Columns
         min_samples_per_user_test_set: int,
     ) -> DataFrame:
-        
 
-        data = self._merge_data(self.rawData, self.rawMeta, item_column)[self.columns]
-        # TODO: We can move the clear rating at the end with before the train test split 
-        data = self._clear_ratings(data, ratings_colum)
-        # TODO: Create an attribute for that. 
-        data = self._log_numerical(data, ctx_numerical_columns)
-        data = self._normalize_columns(data, columns_to_normalize)
+        # Load Data
+        data = self._merge_data_frames(item_column)
+
+        # Numerical Transformations
+        if columns_to_transform:
+            for encoding in columns_to_transform.keys():
+                data = self.encodings[encoding](data, columns_to_transform[encoding])
+                print(
+                    f"{encoding} transformation performed on {columns_to_transform[encoding]} "
+                )
+            # data = self._logarithmic_encoding(data, ctx_numerical_columns)
+        if columns_to_normalize:
+            data = self._normalize_columns(data, columns_to_normalize)
+        elif ctx_numerical_columns:
+            warnings.warn(
+                "\nNo Columns specified to normalize: Normalizing all Numerical Columns"
+            )
+            data = self._normalize_columns(data, ctx_numerical_columns)
+        else:
+            warnings.warn("No Numerical columns have been paseed")
+
+        # Data Cleaning
         data = self._initialize_iterative_cleaning(
             data, user_column, item_column, ratings_colum, min_interactions
         )
+        print(f'K-core cleaning performed with k: {min_interactions}')
         data = self._update_elements_IDs(data)
-        # TODO: Do we actually neeed it?
-        data = data[self.columns]
-        data = self.binarize_nominal_features(data, ctx_categorical_columns)
-        self.train_ratings, self.test_ratings = (
-            self._initialize_leave_one_out_train_test_split(
-                data, min_samples_per_user_test_set
+        data = self._clear_ratings(data, ratings_colum)
+
+        # One-hot encoding
+        if ctx_categorical_columns:
+            data = self._initialize_one_hot_encoding(data, ctx_categorical_columns)
+
+        # Binary clasificaton
+        if self.is_binary_classification:
+            data[self.ratings_column] = data[self.ratings_column].where(
+                data[self.ratings_column] <= 0, 1
             )
-        )
-        # TODO: We could sort the data based on unser
 
-        if self.binary_classification:
-            for user in self.test_ratings[user_column]:
-                pass
+        # Train Test Split
+        if self.train_test_split == "loo":
+            self.train_ratings, self.test_ratings = (
+                self._initialize_leave_one_out_train_test_split(
+                    data=data, min_samples_test_set=min_samples_per_user_test_set
+                )
+            )
 
+        elif self.train_test_split == "standard":
+            self.train_ratings, self.test_ratings = (
+                self._initialize_standard_train_test_split(
+                    data=data, test_size=self.test_size
+                )
+            )
+
+        return data
+
+    def _merge_data_frames(self, item_column):
+        # Check if both DataFrames are loaded and not empty
+        if (
+            self.rawData is not None
+            and not self.rawData.empty
+            and self.rawMeta is not None
+            and not self.rawMeta.empty
+        ):
+            # Check if a key column has been specified
+            if not self.key_column:
+                warnings.warn(
+                    f"No Key Column specified. Using {item_column} column as Key column.",
+                )
+                try:
+                    data = self._merge_data(
+                        self.rawData, self.rawMeta, key_column=item_column
+                    )[self.columns].copy()
+                    return data
+                except KeyError as e:
+                    raise KeyError("Item column cannot be used as key column") from e
+            else:
+                data = self._merge_data(
+                    self.rawData, self.rawMeta, key_column=self.key_column
+                )[self.columns].copy()
+        else:
+            if self.rawData is not None and not self.rawData.empty:
+                data = self.rawData[self.columns].copy()
+            else:
+                raise AttributeError("No DataFrame loaded")
         return data
 
     def _load_data(self, data_path, sep) -> DataFrame:
@@ -135,7 +211,7 @@ class PreProcessDataNCFContextual:
         dataframe = data.merge(metadata, on=key_column)
         return dataframe
 
-    def _clean_columns(self, *args: str | List[str] | Tuple[str]) -> List[str]:
+    def _clean_columns(self, *args: str | List[str] | Tuple[str] | None) -> List[str]:
         """
         Cleans and consolidates column names from various input formats into a single list of strings.
 
@@ -154,6 +230,8 @@ class PreProcessDataNCFContextual:
 
         clean_columns = []
         for i in args:
+            if not i:
+                continue
             if isinstance(i, str):
                 clean_columns.append(i)
                 continue
@@ -165,13 +243,31 @@ class PreProcessDataNCFContextual:
         df = df.dropna(subset=[rating_column])
         return df
 
-    def _log_numerical(self, df: DataFrame, numerical_features: List[str]) -> DataFrame:
-        df_tmp = df.copy()
+    def _cyclical_encoding_inplace(self, df: DataFrame, numerical_features: List[str]):
         for feature in numerical_features:
-            df_tmp[feature] = df_tmp[feature].apply(
-                lambda x: np.log10(x) if x != 0 else np.log10(x + 1)
-            )
-        return df_tmp
+            max_value = df[feature].max()
+            # Use .loc to ensure modifications are done on the original DataFrame
+            df.loc[:, f"sin_{feature}"] = np.sin((2 * np.pi * df[feature]) / max_value)
+            df.loc[:, f"cos_{feature}"] = np.cos((2 * np.pi * df[feature]) / max_value)
+        return df
+
+    def _logarithmic_encoding(
+        self, df: DataFrame, numerical_features: List[str]
+    ) -> DataFrame:
+        """
+        Applies logarithmic base 10 encoding to numerical features in a DataFrame.
+
+        Parameters:
+        - df (DataFrame): The pandas DataFrame containing the data to be transformed.
+        - numerical_features (List[str]): A list of column names in `df` that correspond to the numerical
+        features to be log-transformed.
+
+        Returns:
+        - DataFrame: The modified DataFrame with log-transformed numerical features.
+        """
+        for feature in numerical_features:
+            df[feature] = np.log10(df[feature] + 1)
+        return df
 
     def _normalize_columns(
         self, data: DataFrame, columns_to_normalize: List[str]
@@ -188,12 +284,13 @@ class PreProcessDataNCFContextual:
         """
         # Initializing the MinMaxScaler
         scaler = MinMaxScaler()
+        data[columns_to_normalize] = data[columns_to_normalize].astype(float)
         # Applying the scaler to the selected columns
-        data[columns_to_normalize] = scaler.fit_transform(data[columns_to_normalize])
+        data.loc[:, columns_to_normalize] = scaler.fit_transform(data[columns_to_normalize].values)
 
         return data
 
-    def binarize_nominal_features(
+    def _initialize_one_hot_encoding(
         self, df: DataFrame, contextual_features: List[str]
     ) -> DataFrame:
         """
@@ -292,6 +389,7 @@ class PreProcessDataNCFContextual:
                 and min_user_interactions > min_interactions
             ):
                 is_stable = True
+            print(f"Iteration {iteration_count}")
             if iteration_count == 10:
                 print(f"Iteration {iteration_count}")
             iteration_count += 1
@@ -489,6 +587,7 @@ class PreProcessDataNCFContextual:
         print("Saved in: ", folder_path)
 
     def create_data_info(self, processed_data_path):
+        # TODO: We can calculate this right after loading data and then erase raw data
         num_users_raw = len(self.rawData[self.user_column].unique())
         num_items_raw = len(self.rawData[self.item_column].unique())
         num_interactions_raw = self.rawData.shape[0]
@@ -530,3 +629,43 @@ class PreProcessDataNCFContextual:
                     file.write(f"{i} - {col}\n")
         except Exception as e:
             raise RuntimeError(f"An error occurred: {e}")
+
+    def _check_transformation_functions(self):
+        for enc in self.columns_to_transform.keys():
+            # Check if the item is a string and convert it to a list if it is
+            if isinstance(self.columns_to_transform[enc], str):
+                self.columns_to_transform[enc] = [self.columns_to_transform[enc]]
+
+            # Check if the encoding specified is in the current encodings
+            if enc not in self.encodings.keys():
+                content = dict()
+                for i in self.encodings.keys():
+                    content[i] = self.encodings[i].__doc__
+                raise ValueError(
+                    f"The function you are trying to perform is not yet developed. Possible encodings: \n{content}"
+                )
+
+    def _check_required_paremeters(self, **kwargs):
+        """
+        Given a set of parameters, it it throws an error if one of them is missing.
+
+        Parameters:
+         - kwargs: Keyword arguments representing parameters. Each parameter is a string.
+        """
+        # Check if any of the required parameters is None
+        missing_params = [param for param, value in kwargs.items() if value is None]
+        if missing_params:
+            raise ValueError(
+                f"Missing required parameters: {', '.join(missing_params)}"
+            )
+
+    def _load_datasets(self, path, data_file, meta_file, sep):
+
+        if data_file:
+            self.rawData = self._load_data(path + data_file, sep=sep)
+        else:
+            self.rawData = None
+        if meta_file:
+            self.rawMeta = self._load_data(path + meta_file, sep)
+        else:
+            self.rawMeta = None
