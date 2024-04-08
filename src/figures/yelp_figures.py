@@ -7,12 +7,12 @@ aggregated_counts_item = pd.DataFrame()
 
 
 
-filename = "your_large_file.csv"
+filename = "/work3/s212784/data/processed/YELP/data_yelp.csv"
 user_column = "userId"
 item_column = "businessId"
 interaction_column = "stars"
 
-df_iter = pd.read_csv(filename, iterator=True, chunksize=100000)
+df_iter = pd.read_csv(filename, usecols=[user_column, item_column, interaction_column] , iterator=True, chunksize=100000)
 
 for i, df_chunk in enumerate(df_iter):
     if not i:

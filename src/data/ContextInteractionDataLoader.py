@@ -12,6 +12,12 @@ class ContextInteractionDataLoader(Dataset):
     """
     Data Loader that given 2 Files. Inititalized a train or a test dateset.
     For the test set it can be specifyed the number of negative instances.  
+    
+    The structure of the data must be: 
+    0 - User
+    1 - Item 
+    2 - Interaction
+    3:end - Contextual
     """
 
     def __init__(
