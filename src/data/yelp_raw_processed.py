@@ -1,33 +1,8 @@
 import os
-from datetime import datetime
 
 import holidays
 import numpy as np
 import pandas as pd
-
-from src.utils.tools.tools import ROOT_PATH
-
-
-def classify_day(day):
-    if day >= 5:
-        return "weekend"
-    else:
-        return "workday"
-
-
-def classify_time_of_day(time):
-    if 5 <= time.hour < 7:
-        return "sunrise"
-    elif 7 <= time.hour < 12:
-        return "morning"
-    elif 12 <= time.hour < 14:
-        return "noon"
-    elif 14 <= time.hour < 17:
-        return "afternoon"
-    elif 17 <= time.hour < 20:
-        return "evening"
-    else:
-        return "night"
 
 
 def is_holiday(row):
@@ -53,32 +28,12 @@ def is_holiday(row):
         holiday_list = holidays.UnitedStates(
             state=state if state in holidays.US.subdivisions else None
         )
-    return "isholiday" if date in holiday_list else "notholiday"
-
-
-def get_season(date):
-    # Ensure the input is a datetime object
-    if not isinstance(date, datetime):
-        raise ValueError("The date must be a datetime object")
-
-    spring_start = datetime(date.year, 3, 20)
-    summer_start = datetime(date.year, 6, 21)
-    fall_start = datetime(date.year, 9, 22)
-    winter_start = datetime(date.year, 12, 21)
-
-    if date >= spring_start and date < summer_start:
-        return "spring"
-    elif date >= summer_start and date < fall_start:
-        return "summer"
-    elif date >= fall_start and date < winter_start:
-        return "fall"
-    else:
-        return "winter"
+    return date in holiday_list
 
 
 if __name__ == "__main__":
 
-    file_name = "data_yelp.csv"
+    file_name = "yelp_data.csv"
     data_raw_folder = "/work3/s212784/data/YELP/"
     data_processed_folder = "/work3/s212784/data/processed/YELP/"
 
@@ -111,22 +66,45 @@ if __name__ == "__main__":
     print("Second Merge done")
     del df_business
     print("Variables deleted")
+
     # Transform to date
     data["date"] = pd.to_datetime(data["date"])
     data["yelping_since"] = pd.to_datetime(data["yelping_since"])
     print("Date Transformed")
+
     # Classify workday/weekend
-    data["isweekend"] = data["date"].dt.dayofweek.apply(classify_day)
+    # data["isweekend"] = data["date"].dt.dayofweek.apply(classify_day)
+    data["isweekend"] = data["date"].dt.dayofweek >= 5
     print("Weekend/worrkday done")
+
     # Classify daytime
-    data["daytime"] = data["date"].apply(lambda x: classify_time_of_day(x))
+    # data["daytime"] = data["date"].apply(lambda x: classify_time_of_day(x)).astype('category')
+    conditions = [
+        (data["date"].dt.hour >= 5) & (data["date"].dt.hour < 7),
+        (data["date"].dt.hour >= 7) & (data["date"].dt.hour < 12),
+        (data["date"].dt.hour >= 12) & (data["date"].dt.hour < 14),
+        (data["date"].dt.hour >= 14) & (data["date"].dt.hour < 17),
+        (data["date"].dt.hour >= 17) & (data["date"].dt.hour < 20),
+    ]
+    choices = [
+        "sunrise",
+        "morning",
+        "noon",
+        "afternoon",
+        "evening",
+    ]
+    data["daytime"] = np.select(conditions, choices, default="night")
+    data["daytime"] = data["daytime"].astype("category")
     print("Daytime done")
+
     # Obtain weeknumber
     data["week_number"] = data["date"].dt.isocalendar().week
     print("week_number done")
+
     # Obtain Holidays
-    data["holiday_status"] = data.apply(is_holiday, axis=1)
-    print("holiday_status done")
+    data["isHoliday"] = data.apply(is_holiday, axis=1)
+    print("isHoliday done")
+
     # Transofrm number Friends + elitegit a
     data["num_elite"] = data.elite.apply(
         lambda x: len(x.split(",")) if not pd.isna(x) else 0
@@ -135,17 +113,38 @@ if __name__ == "__main__":
         lambda x: len(x.split(",")) if not pd.isna(x) else 0
     )
     print("num_elite & num_firends done")
+
     # Obtain season
-    data["season"] = data["date"].apply(get_season)
+    years = data["date"].dt.year
+    # Define start dates for each season in a given year
+    spring_starts = pd.to_datetime(years.astype(str) + "-03-20")
+    summer_starts = pd.to_datetime(years.astype(str) + "-06-21")
+    fall_starts = pd.to_datetime(years.astype(str) + "-09-22")
+    winter_starts = pd.to_datetime(years.astype(str) + "-12-21")
+    # Conditions for each season
+    conditions = [
+        (data["date"] >= spring_starts) & (data["date"] < summer_starts),
+        (data["date"] >= summer_starts) & (data["date"] < fall_starts),
+        (data["date"] >= fall_starts) & (data["date"] < winter_starts),
+        (data["date"] >= winter_starts) | (data["date"] < spring_starts),
+    ]
+    # Season names
+    choices = ["spring", "summer", "fall", "winter"]
+    # Apply conditions and choices
+    data["season"] = np.select(conditions, choices, default="winter")
+    data["season"] = data["season"].astype("category")
     print("season done")
+
     # Obtain Seniority on app
     max_date = data.date.max().year
     data["seniority"] = data["yelping_since"].apply(lambda x: max_date - x.year)
     print("seniority done")
+
     # Transform uuid4
     data["userId"] = pd.factorize(data["user_id"])[0]
     data["businessId"] = pd.factorize(data["business_id"])[0]
     print("Ids Transformation done")
+
     # Filter desired columns
     columns = [
         "userId",
@@ -157,17 +156,26 @@ if __name__ == "__main__":
         "daytime",
         "week_number",
         "season",
-        "holiday_status",
+        "isHoliday",
         "num_firends",
         "num_elite",
         "seniority",
     ]
-    
+
     # Save csv
     os.makedirs(data_processed_folder, exist_ok=True)
+    file_path = os.path.join(data_processed_folder, file_name)
     print(f"Attempting to save in directory: {data_processed_folder}")
+
     try:
-        data[columns].to_csv(data_processed_folder + file_name)
-        print(f"saved into {data_processed_folder, file_name}")
+        data[columns].to_csv(
+            data_processed_folder + file_name, sep="\t", header=False, index=False
+        )
+        print(f"Saved into {data_processed_folder}, Filename: {file_name}")
+
+        readme_path = os.path.join(data_processed_folder, "ReadMe.txt")
+        with open(readme_path, "w") as f:
+            f.write(f"Summary of data {file_name}\n")
+            f.write(data.dtypes.to_string())  # Convert dtype Series to string
     except Exception as e:
         print(f"The following Problem occured {e}")

@@ -4,6 +4,8 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+from torch.nn import Module
+from torch import nn
 
 
 def save_checkpoint(chk_path, epoch, lr, optimizer, model_pos, min_loss):
@@ -18,6 +20,29 @@ def save_checkpoint(chk_path, epoch, lr, optimizer, model_pos, min_loss):
         },
         chk_path,
     )
+
+
+def load_model_with_params(path: str, base_model: Module):
+    checkpoint = torch.load(path)
+    model_params = checkpoint["model_params"]
+
+    # Reconstruct the model based on saved parameters
+    # This assumes you have a way to map 'activation' from a string to an actual PyTorch activation function
+    activation_function = (
+        getattr(nn, model_params["activation"])
+        if "activation" in model_params
+        else nn.ReLU
+    )
+    model = base_model(
+        hidden_dims=model_params["hidden_dims"],
+        dropout=model_params["dropout"],
+        activation=activation_function,
+    )
+
+    # Load the saved state_dict into the model
+    model.load_state_dict(checkpoint["model_state_dict"])
+
+    return model
 
 
 def save_model_with_params(chk_path, model, model_params):
@@ -125,7 +150,7 @@ def plot_and_save_losses(loss_dict, folder_path, filename="loss_plot.png"):
     plt.xlabel("Epoch")
     plt.ylabel("Loss")
     plt.grid(True)
-    
+
     # plt.ylim(0, max_loss)
 
     plt.tight_layout()  # Adjust the layout to make room for the labels
