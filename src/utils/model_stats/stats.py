@@ -69,6 +69,7 @@ def calculate_model_size(model):
     model_size_mb = model_size_bytes / (1024**2)
     print(f"INFO: Model Size: {model_size_mb:.2f} MB")
     print("INFO: Trainable parameter count:", trainable_params)
+    return model_size_mb
 
 
 def calculate_memory_allocation():
@@ -207,11 +208,35 @@ def save_dict_to_file(dict_data, folder_path, filename="dict_contents.txt"):
     # Construct the full path for the file
     file_path = os.path.join(folder_path, filename)
 
-    # Serialize the easydict to a JSON string for a readable format
-    dict_str = json.dumps(dict_data, indent=4)
-
     # Open the file and write the serialized string
     with open(file_path, "w") as f:
-        f.write(dict_str)
+        for i in dict_data.keys():
+            f.write(f'{i}: {dict_data[i]}\n')
+        
 
     print(f"Dictionary contents saved to {file_path}")
+
+# def save_dict_to_file(dict_data, folder_path, filename="dict_contents.txt"):
+#     """
+#     Saves the contents of an `easydict` dictionary to a text file in a readable format.
+
+#     Parameters:
+#         dict_data (edict): The `easydict` dictionary instance to be saved.
+#         folder_path (str): The path to the folder where the file should be saved.
+#         filename (str): The name of the file to save the dictionary contents to. Default is 'dict_contents.txt'.
+#     """
+
+#     # Ensure the folder exists
+#     os.makedirs(folder_path, exist_ok=True)
+
+#     # Construct the full path for the file
+#     file_path = os.path.join(folder_path, filename)
+
+#     # Serialize the easydict to a JSON string for a readable format
+#     dict_str = json.dumps(dict_data, indent=4)
+
+#     # Open the file and write the serialized string
+#     with open(file_path, "w") as f:
+#         f.write(dict_str)
+
+#     print(f"Dictionary contents saved to {file_path}")

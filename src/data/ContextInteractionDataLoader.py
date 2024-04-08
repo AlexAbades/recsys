@@ -18,6 +18,8 @@ class ContextInteractionDataLoader(Dataset):
     1 - Item 
     2 - Interaction
     3:end - Contextual
+
+    For Small Datasets that can be stored in memory. 
     """
 
     def __init__(
@@ -28,6 +30,7 @@ class ContextInteractionDataLoader(Dataset):
         test_file: str = ".test.rating",
         num_negative_samples: int = 5,
         sep: str = "\t",
+        logger = None
     ) -> None:
         super().__init__()
         self.train_file = train_file
@@ -36,6 +39,7 @@ class ContextInteractionDataLoader(Dataset):
         self.data_name = self._get_data_name(folder_path)
         self.sep = sep
         self.num_negative_samples = num_negative_samples
+        self.logger = logger
         self._initialize_atributes(split)
 
     def _load_data(self, data_path, sep) -> DataFrame:
@@ -53,6 +57,7 @@ class ContextInteractionDataLoader(Dataset):
         # Initialize train set
         train_path = os.path.join(self.folder_path, self.data_name + self.train_file)
         self.train_data = self._load_data(train_path, self.sep)
+        self.logger("Train Loaded")
         self.train_users = self.train_data.iloc[:, 0].values
         self.train_items = self.train_data.iloc[:, 1].values
         self.unique_items = set(self.train_items)
@@ -63,6 +68,7 @@ class ContextInteractionDataLoader(Dataset):
             user: list(self.unique_items - items_set)
             for user, items_set in self.items_per_user_train.items()
         }
+        self.logger("Initialize interacted an non interacted items per user")
 
         if split == "train":
 
@@ -81,6 +87,7 @@ class ContextInteractionDataLoader(Dataset):
             self.num_items = len(np.unique(self.train_items))
 
             self.unique_users = set(self.train_users)
+            self.logger("Attempting to create data")
 
             self.create_train_data()
 
@@ -166,6 +173,7 @@ class ContextInteractionDataLoader(Dataset):
         self.extended_context = torch.tensor(
             expanded_context.values.astype(float), dtype=torch.float
         )
+        self.logger("Context Created")
 
         # Initialize new sets
         extended_users, extended_items, extended_rating = [], [], []
@@ -186,6 +194,8 @@ class ContextInteractionDataLoader(Dataset):
             extended_users.extend([user] * self.num_negative_samples)
             extended_items.extend(negative_samples)
             extended_rating.extend([0] * self.num_negative_samples)
+        
+        self.logger("Extend lists with negative samples and corresponding ratings")
 
         self.extended_users = torch.tensor(extended_users, dtype=torch.long)
         self.extended_items = torch.tensor(extended_items, dtype=torch.long)

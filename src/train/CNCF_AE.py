@@ -18,8 +18,11 @@ from src.models.contextNFC.context_nfc import DeepNCF
 from src.utils.eval import getBinaryDCG, getHR, getRR
 from src.utils.model_stats.stats import (
     load_model_with_params,
+    plot_and_save_losses,
     save_accuracy,
     save_checkpoint,
+    save_dict_to_file,
+    save_model_specs,
     save_model_with_params,
 )
 from src.utils.tools.tools import ROOT_PATH, create_checkpoint_folder, get_config
@@ -36,7 +39,7 @@ def parse_args():
     parser.add_argument(
         "-c",
         "--checkpoint",
-        default="checkpoints/CNCF_I",
+        default="checkpoints/CNCF_AE",
         type=str,
         metavar="PATH",
         help="checkpoint directory",
@@ -285,7 +288,7 @@ def train_with_config(args, opts):
             )
 
             # Save best Model based on HR
-            if hr < best_hr:
+            if hr > best_hr:
                 best_hr = hr
                 save_checkpoint(
                     chk_path_best, epoch, args.lr, optimizer, rs_model, min_loss
@@ -297,6 +300,10 @@ def train_with_config(args, opts):
                     ndcg=ndcg,
                     epoch=epoch,
                 )
+    plot_and_save_losses(losses, check_point_path)
+    save_model_specs(rs_model, check_point_path)
+    save_dict_to_file(args, check_point_path)
+    save_dict_to_file(losses, check_point_path, filename="loses.txt")
 
 
 if __name__ == "__main__":

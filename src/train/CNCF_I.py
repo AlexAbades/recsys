@@ -16,8 +16,8 @@ from src.data.ContextInteractionDataLoader import \
     ContextInteractionDataLoader
 from src.models.contextNFC.context_nfc import DeepNCF
 from src.utils.eval import getBinaryDCG, getHR, getRR
-from src.utils.model_stats.stats import save_accuracy, save_checkpoint
-from src.utils.tools.tools import (ROOT_PATH, create_checkpoint_folder,
+from src.utils.model_stats.stats import calculate_model_size, save_accuracy, save_checkpoint
+from src.utils.tools.tools import (ROOT_PATH, TextLogger, create_checkpoint_folder,
                                    get_config)
 
 
@@ -34,7 +34,7 @@ def parse_args():
     parser.add_argument(
         "--config",
         type=str,
-        default="configs/CNCF/frappe-inter.yaml",
+        default="configs/CNCF/YELP/yelp-1.yaml",
         help="Path to the config file.",
     )
     opts = parser.parse_args()
@@ -151,18 +151,24 @@ def train_with_config(args, opts):
     # Folder structure checkpoint
     data_name, check_point_path = create_checkpoint_folder(args, opts)
     processed_data_path = os.path.join(ROOT_PATH, args.processed_data_root)
-
+    log_path = os.path.join(ROOT_PATH, f'logs/logs_{args.foldername}')
+    
+    logger = TextLogger(log_path)
+    
     print(f"Running in device: {_device}")
+    logger.log(f"Running in device: {_device}")
 
     # Load preprocessed Data
     train_data = ContextInteractionDataLoader(
         processed_data_path, split="train"
     )
+    logger.log(f"Train Data Loaded")
     test_data = ContextInteractionDataLoader(
         processed_data_path,
         split="test",
         num_negative_samples=99,
     )
+    logger.log(f"Test Data Loaded")
 
     # Dataloader
     train_loader = DataLoader(train_data, args.batch_size)
@@ -180,6 +186,7 @@ def train_with_config(args, opts):
         mf_dim=args.num_factors,
         layers=args.layers,  # Has to be
     ).to(_device)
+    logger.log(calculate_model_size(model))
 
     # Initialize Optimizer and Loss function
     loss_fn = _loss_fn[args.loss]
