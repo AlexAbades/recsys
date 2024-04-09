@@ -1,5 +1,6 @@
 import errno
 import os
+import pickle
 import textwrap
 import warnings
 from typing import Dict, List, Tuple
@@ -39,6 +40,7 @@ class PreProcessDataNCFContextual:
         ctx_numerical_columns: List[str] = None,
         columns_to_transform: Dict[str, str | List[str]] = None,
         columns_to_normalize: List[str] = None,
+        folder_name: str = None,
         min_interactions: int = 5,
         min_samples_per_user_test_set: int = 1,
         is_binary_classification: bool = True,
@@ -136,9 +138,13 @@ class PreProcessDataNCFContextual:
         data = self._initialize_iterative_cleaning(
             data, user_column, item_column, ratings_colum, min_interactions
         )
-        print(f'K-core cleaning performed with k: {min_interactions}')
-        data = self._update_elements_IDs(data)
+        print(f"K-core cleaning performed with k: {min_interactions}")
+        # data = self._update_elements_IDs(data)
+        data = self._update_elements_IDs_factorized(data)
+
         data = self._clear_ratings(data, ratings_colum)
+
+        self.positive_samples = self._create_positive_sampling(data)
 
         # One-hot encoding
         if ctx_categorical_columns:
@@ -166,6 +172,20 @@ class PreProcessDataNCFContextual:
             )
 
         return data
+
+    def _create_positive_sampling(self, data: DataFrame) -> dict:
+        """
+        Given a dataset it computes a dictionary with the interacted Items per user
+
+        Parameters:
+            - data (DataFrame): The data frame containg at least 2 columns User and Item
+        Returns:
+            - interacted_items (dict): Dictionary with users as keys and interated items per user as values
+        """
+        interacted_items = (
+            data.groupby([self.user_column])[self.item_column].apply(set).to_dict()
+        )
+        return interacted_items
 
     def _merge_data_frames(self, item_column):
         # Check if both DataFrames are loaded and not empty
@@ -286,7 +306,9 @@ class PreProcessDataNCFContextual:
         scaler = MinMaxScaler()
         data[columns_to_normalize] = data[columns_to_normalize].astype(float)
         # Applying the scaler to the selected columns
-        data.loc[:, columns_to_normalize] = scaler.fit_transform(data[columns_to_normalize].values)
+        data.loc[:, columns_to_normalize] = scaler.fit_transform(
+            data[columns_to_normalize].values
+        )
 
         return data
 
@@ -395,37 +417,6 @@ class PreProcessDataNCFContextual:
             iteration_count += 1
 
         return data_clean_items_users
-
-    def _initialize_train_test(self, data: DataFrame, min_samples_test_set: int):
-        """
-        Funtion that splits the dataser into train/test.
-        Following the strategy of Leave one out - test set 1 interaction per user
-
-
-        TODO: Update, we have the prefilter.
-        """
-        frequency_interaction = data.groupby(self.user_column)[
-            [self.item_column, self.ratings_column]
-        ].count()
-        users_one_interaction = frequency_interaction[
-            frequency_interaction[self.ratings_column] == 1
-        ].index
-        list_of_users = data[self.user_column].unique()
-        users_more_one_interaction = list(
-            set(list_of_users) - set(users_one_interaction)
-        )
-        idx = []
-        for i in users_more_one_interaction:
-            element = data[data["user"] == i].sample(n=min_samples_test_set)
-            idx.append(element.index[0])
-
-        test_idx = np.isin(data.index, np.array(idx))
-
-        train_ratings, test_ratings = (
-            data[~test_idx],
-            data[test_idx],
-        )
-        return train_ratings, test_ratings
 
     def _initialize_leave_one_out_train_test_split(
         self, data: DataFrame, min_samples_test_set: int
@@ -545,6 +536,23 @@ class PreProcessDataNCFContextual:
 
         return data
 
+    def _update_elements_IDs_factorized(self, data: DataFrame) -> DataFrame:
+        """
+        Ensures user and item IDs in the DataFrame are continuous sequences. If not,
+        remaps the IDs to be continuous using pandas' factorize() method.
+
+        Parameters:
+        - data (DataFrame): The input data with user and item columns.
+
+        Returns:
+        - DataFrame: The modified DataFrame with continuous user and item ID sequences.
+        """
+        # Factorize user and item IDs
+        data[self.user_column], _ = pd.factorize(data[self.user_column])
+        data[self.item_column], _ = pd.factorize(data[self.item_column])
+
+        return data
+
     def save_data(self, folder_name: str) -> None:
         """
         Saves the Class atributes train-ratings, under the path data/processed/folder_name/
@@ -555,6 +563,30 @@ class PreProcessDataNCFContextual:
         Parameters:
             - folde_name (str): The folder name under the processed data will be saved
         """
+        processed_data_path, folder_path = self.create_save_directory(folder_name)
+
+        self.train_ratings.to_csv(
+            folder_path + ".train.rating",
+            index=False,
+            sep=self.sep,
+            header=False,
+        )
+        self.test_ratings.to_csv(
+            folder_path + ".test.rating",
+            index=False,
+            sep=self.sep,
+            header=False,
+        )
+        try:
+            with open(folder_path + ".positive_samples.pkl", "wb") as f:
+                pickle.dump(self.positive_samples, f, protocol=pickle.HIGHEST_PROTOCOL)
+        except Exception as e:
+            raise RuntimeError(f"An error occurred: {e}")
+
+        self.create_data_info(processed_data_path)
+        print("Saved in: ", folder_path)
+
+    def create_save_directory(self, folder_name):
         current_file_path = os.path.abspath(__file__)
         data_folder_path = os.path.dirname(current_file_path)
         processed_data_path = os.path.join(data_folder_path, "processed", folder_name)
@@ -570,21 +602,7 @@ class PreProcessDataNCFContextual:
                 )
         except Exception as e:
             raise RuntimeError(f"An error occurred: {e}")
-
-        self.train_ratings.to_csv(
-            folder_path + ".train.rating",
-            index=False,
-            sep=self.sep,
-            header=False,
-        )
-        self.test_ratings.to_csv(
-            folder_path + ".test.rating",
-            index=False,
-            sep=self.sep,
-            header=False,
-        )
-        self.create_data_info(processed_data_path)
-        print("Saved in: ", folder_path)
+        return processed_data_path, folder_path
 
     def create_data_info(self, processed_data_path):
         # TODO: We can calculate this right after loading data and then erase raw data
