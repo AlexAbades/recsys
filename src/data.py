@@ -1,21 +1,37 @@
 from src.data.PreProcessData import PreProcessDataNCF
+from src.data.PreProcessDataContext import PreProcessDataNCFContextual
 from src.utils.tools.tools import ROOT_PATH
 
 if __name__ == "__main__":
-    raw_data_path = "/work3/s212784/data/processed/YELP/data_yelp.csv"
-    processed_folder_path = "/work3/s212784/data/processed/YELP/NFC"
+    path = "/work3/s212784/data/processed/YELP"
+    data_file = "yelp.csv"
+    user_column = "userId"
+    item_column = "businessId"
+    ratings_column = "stars"
+    ctx_categorical_columns = ["isweekend", "season", "isHoliday", "daytime"]
+    ctx_numerical_columns = [
+        "latitude",
+        "longitude",
+        "week_number",
+        "num_firends",
+        "num_elite",
+        "seniority",
+    ]
+    columns_to_transform = {"cyclical": ["week_number"]}
+    min_interactions = 2
     try:
         print("Attempting to PreProcess Data")
-        data = PreProcessDataNCF(
-            raw_data_path,
-            user_column="userId",
-            item_column="businessId",
-            interaction_column="stars",
+        data = PreProcessDataNCFContextual(
+            path=path,
+            data_file=data_file,
+            user_column=user_column,
+            item_column=item_column,
+            ratings_column=ratings_column,
+            ctx_categorical_columns=ctx_categorical_columns,
+            ctx_numerical_columns=ctx_numerical_columns,
+            columns_to_transform=columns_to_transform,
+            min_interactions=min_interactions,
         )
-        print("Data Initialized. Attempting to train/test:")
-        data.split_traintest()
-        print("Creating negative samples")
-        data.negative_samples(99)
-        data.save_data()
+        data.save_data(folder_name="yelp_2.1_ctx")
     except Exception as e:
         print(e)
