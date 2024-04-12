@@ -12,7 +12,7 @@ from torch.nn import Module
 from torch.optim import Optimizer
 from torch.utils.data import DataLoader
 
-from src.data.ContextInteractionDataLoader import ContextInteractionDataLoader
+from src.data.older.cncf_interaction_datset_v2 import ContextInteractionDataLoader
 from src.models.AutoEncoder.AE import AutoEncoder
 from src.models.contextNFC.context_nfc import DeepNCF
 from src.utils.eval import getBinaryDCG, getHR, getRR
