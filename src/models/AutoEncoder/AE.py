@@ -1,8 +1,7 @@
-from typing import Callable, List
 import warnings
-from torch import nn
+from typing import Callable, List
 
-# TODO: Initialize mean and standard deviation
+from torch import nn
 
 
 class AutoEncoder(nn.Module):
@@ -17,9 +16,10 @@ class AutoEncoder(nn.Module):
         Autoencoder following an hourglass structure
 
         Parameters:
-          - hidden_dims (List[ìnt]): List indicating the hideen dimensions of the Encoder
-          - dropout (float): Droput for all hidden layers
-          - activation (Callable): Activation function, default to ReLU
+          - hidden_dims (List[int]): List indicating the hidden dimensions of the Encoder
+          - dropout (float): Dropout for all hidden layers
+          - activation (Callable): Activation function, defaults to ReLU
+          - init_weights (bool): Whether to initialize the weights, defaults to False
         """
         super().__init__()
 
@@ -62,11 +62,23 @@ class AutoEncoder(nn.Module):
             self._init_weights()
 
     def forward(self, x):
+        """
+        Forward pass of the AutoEncoder
+
+        Parameters:
+          - x: Input tensor
+
+        Returns:
+          - dict: Dictionary containing the latent representation and the reconstructed input
+        """
         z = self.encoder(x)
         x_hat = self.decoder(z)
         return {"latent": z, "prediction": x_hat}
 
     def _init_weights(self):
+        """
+        Initialize the weights of the linear layers in the AutoEncoder
+        """
         for module in self.modules():
             if isinstance(module, nn.Linear):
                 nn.init.normal_(module.weight, mean=0.0, std=0.01)

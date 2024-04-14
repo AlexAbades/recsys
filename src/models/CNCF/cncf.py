@@ -3,12 +3,12 @@ from typing import List
 import torch
 from torch import nn
 
-from src.models.CNCF.gmf1 import GMF
-from src.models.Embeding.embedding import Embedding
-from src.models.mlp.mlp import MLP
+from src.models.GMF.gmf import GeneralMatrixFactorization
+from src.models.Embeding.context_aware_embeddings import ContextAwareEmbeddings
+from src.models.MLP.mlp import MultiLayerPerceptron
 
 
-class DeepNCF(nn.Module):
+class CNCF(nn.Module):
     """
     Implements the Context Aware Neural Collaborative Filtering (DeepNCF) model, which combines
     Generalized Matrix Factorization (GMF) and a Multi-Layer Perceptron (MLP).
@@ -55,13 +55,13 @@ class DeepNCF(nn.Module):
         self.binary_classification = binary_classification
 
         # Init Embeddings
-        self.embeddings = Embedding(
+        self.embeddings = ContextAwareEmbeddings(
             num_users, num_items, num_context, mf_dim, mlp_in_layer
         )
         # GMF
-        self.GMF_model = GMF()
+        self.GMF_model = GeneralMatrixFactorization()
         # MLP
-        self.MLP_model = MLP(layers)
+        self.MLP_model = MultiLayerPerceptron(layers)
         # Prediction layer
         self.predict_layer = nn.Linear(mf_dim + mlp_out_layer, 1)
 

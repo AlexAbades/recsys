@@ -14,7 +14,7 @@ from torch.utils.data import Dataset
 # - Implement a __getitem__() method for the dataloader
 
 
-class MovieLensDataset(Dataset):
+class NCFDataset(Dataset):
     def __init__(
         self, test_size: float = 0.2, num_negatives: int = 4, sep: str = "::"
     ) -> None:

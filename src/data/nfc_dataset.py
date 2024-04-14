@@ -9,46 +9,7 @@ from pandas import DataFrame
 from torch.utils.data import Dataset
 
 
-class CNCFDataset(Dataset):
-    """
-    A PyTorch Dataset class for loading CNCF interaction data.
-
-    Parameters:
-    - folder_path (str): The path to the folder containing the data files.
-    - split (str): The split of the data to load (train or test).
-    - train_file (str): The filename for the training data.
-    - test_file (str): The filename for the test data.
-    - positive_file (str): The filename for the positive samples data.
-    - n_items (int): The total number of items in the dataset.
-    - num_negative_samples (int): The number of negative samples to generate for each positive sample.
-    - sep (str): The separator used in the data files.
-
-    Attributes:
-    - split (str): The split of the data being loaded.
-    - train_file (str): The filename for the training data.
-    - test_file (str): The filename for the test data.
-    - positive_file (str): The filename for the positive samples data.
-    - folder_path (str): The path to the folder containing the data files.
-    - num_negative_samples (int): The number of negative samples to generate for each positive sample.
-    - data_name (str): The name of the dataset.
-    - train_path (str): The path to the training data file.
-    - test_path (str): The path to the test data file.
-    - positive_sample_path (str): The path to the positive samples data file.
-    - items (set): A set of all item IDs in the dataset.
-    - positive_samples (DataFrame): A DataFrame containing the positive samples for each user.
-    - data (DataFrame): The loaded data as a DataFrame.
-
-    Methods:
-    - __getitem__(self, index): Get an item from the dataset.
-    - __len__(self): Get the length of the dataset.
-    - _load_data(self, split: str, sep: str) -> DataFrame: Load data from a file.
-    - _check_split(self, split) -> str: Check if the split is valid.
-    - _load_pkl(self, data_path: str) -> DataFrame: Load a pickled file.
-    - _get_data_name(self, folder_path: str) -> str: Get the name of the dataset.
-    - _get_global_paths(self): Get the paths to the data files.
-    - _check_required_parameters(self, **kwargs): Check if required parameters are provided.
-    """
-
+class NCFDataset(Dataset):
     def __init__(
         self,
         folder_path: str = None,
@@ -67,6 +28,7 @@ class CNCFDataset(Dataset):
         self.test_file = test_file
         self.positive_file = positive_file
         self.folder_path = folder_path
+        self.num_items = n_items
         self.num_negative_samples = num_negative_samples
         self.data_name = self._get_data_name(folder_path)
         self.train_path, self.test_path, self.positive_sample_path = (
@@ -90,27 +52,30 @@ class CNCFDataset(Dataset):
             return {
                 "user": torch.tensor(self.data.iloc[index, 0], dtype=torch.long),
                 "item": torch.tensor(self.data.iloc[index, 1], dtype=torch.long),
-                "rating": torch.tensor(self.data.iloc[index, 2]),
-                "context": torch.tensor(self.data.iloc[index, 3:]),
+                "rating": torch.tensor(self.data.iloc[index, 2], dtype=torch.float),
+                "gtItem": torch.tensor(item, dtype=torch.long),
             }
 
-        user, item, rating, *context = self.data.iloc[index]
+        user, item, rating = self.data.iloc[index]
         positive_samples = self.positive_samples[user]
         negative_samples = list(self.items - positive_samples)
         negative_samples = sample(negative_samples, self.num_negative_samples)
 
-        # TODO review item retrival
+        if any(
+            x >= self.num_items for x in negative_samples
+        ):  # Check if any indices are out of bounds
+            raise ValueError("Sampled index out of bounds")
+
         user = [user] * (self.num_negative_samples + 1)
-        negative_ratings = [0] * self.num_negative_samples
-        rating = [rating] * (self.num_negative_samples + 1)
-        context = [context] * (self.num_negative_samples + 1)
-        gtIems = [item] * (self.num_negative_samples + 1)
+        # rating = [rating] * (self.num_negative_samples + 1)
+        negative_rating = [0] * (self.num_negative_samples)
+        gtItem = [item] * (self.num_negative_samples + 1)
+
         return {
             "user": torch.tensor(user, dtype=torch.long),
-            "item": torch.tensor(negative_samples + [item], dtype=torch.long),
-            "rating": torch.tensor([rating] + negative_ratings),
-            "context": torch.tensor(context),
-            "gtItem": torch.tensor(gtIems),
+            "item": torch.tensor([item] + negative_samples, dtype=torch.long),
+            "rating": torch.tensor([rating] + negative_rating, dtype=torch.float),
+            "gtItem": torch.tensor(gtItem, dtype=torch.long),
         }
 
     def __len__(self):

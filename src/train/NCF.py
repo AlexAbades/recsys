@@ -1,71 +1,69 @@
 import argparse
-import errno
 import os
+from collections import defaultdict
 from time import time
-from typing import Callable, Dict
 
 import numpy as np
 import torch
-import yaml
 from torch import nn, optim
-from torch.utils.data import DataLoader, TensorDataset
-from torch.optim import Optimizer
-from torch.nn import Module
+from torch.utils.data import DataLoader
 
-from src.data.DataLoader import MovieLensDataset
-from src.models.nfc.nfc import NFC
-from src.utils.evaluation_metrics.evaluation import *
-from src.utils.evaluation_metrics.evaluation import evaluate_model
-from src.utils.model_stats.stats import (
-    calculate_model_size,
-    save_accuracy,
-    save_checkpoint,
+from src.data.cncf_collate_fn import ncf_negative_sampling
+from src.data.nfc_dataset import NCFDataset
+from src.models.NCF.nfc import NeuralCollaborativeFiltering
+from src.utils.eval import getBinaryDCG, getHR, getRR
+from src.utils.model_stats.stats import save_accuracy, save_checkpoint
+from src.utils.tools.tools import (
+    ROOT_PATH,
+    create_checkpoint_folder,
+    get_config,
+    get_parent_path,
 )
-from src.utils.tools.tools import get_config, ROOT_PATH
-
-# Debug = 1
-os.environ["CUDA_LAUNCH_BLOCKING"] = "0"
-
-# TODO: Reciprocal Rank (get list of recomended items, see where is the first relevant item in the list, divide 1/position on the list), NCDG,
-# TODO: Update Dataloader:
-# - Add get Item
-# - Update class so it only processed processed data, there is a class for preprocess data
-# - Add option to generate negative samples ate the begining and not in every epoch.
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Run GMF.")
-    parser.add_argument(
-        "-c",
-        "--checkpoint",
-        default="checkpoints/nfc",
-        type=str,
-        metavar="PATH",
-        help="checkpoint directory",
-    )
+    parser = argparse.ArgumentParser(description="NCF")
     parser.add_argument(
         "--config",
         type=str,
-        default="configs/nfc/frappe-1.yaml",
-        help="Path to the config file.",
+        default="configs/NCF/FRAPPE/frappe1.yaml",
+        help="Configuration file to use",
     )
+    # Don't know if it should be in the yaml file
+    # parser.add_argument(
+    #     "--processed_data_root",
+    #     type=str,
+    #     default="data/processed",
+    #     help="Root folder of processed data",
+    # )
+    parser.add_argument(
+        "--checkpoint",
+        type=str,
+        default="checkpoints/NCF",
+        help="Root folder of checkpoints",
+    )
+    # parser.add_argument(
+    #     "--name",
+    #     type=str,
+    #     default="default",
+    #     help="Name of the experiment",
+    # )
     opts = parser.parse_args()
     return opts
 
 
-_optimizers = {"adam": optim.Adam, "SGD": optim.SGD}
-_loss_fn = {"BCE": nn.BCELoss()}
-
-# Check for GPU
 _device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+_optimizers = {"adam": optim.Adam, "SGD": optim.SGD}
+_loss_fn = {"BCE": nn.BCELoss(), "MSE": nn.MSELoss()}
 
 
 def train_epoch(
-    optimizer: Optimizer,
-    loss_fn: Callable,
+    optimizer: optim.Optimizer,
+    loss_fn: nn.Module,
     train_loader: DataLoader,
-    model: Module,
-    losses: Dict,
+    model: nn.Module,
+    losses: dict,
 ):
     """
     Function that performs a training epoch step.
@@ -81,119 +79,165 @@ def train_epoch(
 
     idx_loss = len(losses.keys())
     model.train()
+    total_loss = 0.0
+    num_batches = 0
 
-    # calculate_memory_allocation()
     for batch in train_loader:
-        user_input = batch[0].to(_device)
-        item_input = batch[1].to(_device)
-        labels = batch[2].to(_device)
+        user_input = batch["user"].to(_device)
+        item_input = batch["item"].to(_device)
+        labels = batch["rating"].to(_device)
         labels = labels.view(-1, 1)
 
         output = model(user_input, item_input)
         loss = loss_fn(output, labels)
+
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
-    losses[idx_loss] = loss
+        total_loss += loss.item()
+        num_batches += 1
+
+    losses[idx_loss] = total_loss / num_batches
+
+    return losses
+
+
+def evaluate_model(model_pos: nn.Module, data_loader: DataLoader, topK: int):
+    global _device
+
+    model_pos.eval()
+
+    all_users = []
+    all_items = []
+    all_predictions = []
+    all_gtItems = []
+    with torch.no_grad():
+        for batch in data_loader:
+            user_input = batch["user"].to(_device)
+            item_input = batch["item"].to(_device)
+            gtItems = batch["gtItem"]
+
+            batch_predictions = model_pos(user_input, item_input)
+
+            all_predictions.append(batch_predictions.cpu().numpy())
+            all_users.append(user_input.cpu().numpy())
+            all_items.append(item_input.cpu().numpy())
+            all_gtItems.append(gtItems.numpy())
+
+    # Concatenate all arrays into a single NumPy array
+    all_predictions = np.concatenate(all_predictions, axis=0).flatten()
+    all_users = np.concatenate(all_users, axis=0).flatten()
+    all_items = np.concatenate(all_items, axis=0).flatten()
+    all_gtItems = np.concatenate(all_gtItems, axis=0).flatten()
+
+    # Initialize a defaultdict to store lists of (item, score) tuples for each user
+    user_predictions = defaultdict(list)
+
+    for user, item, score, gtItem in zip(
+        all_users, all_items, all_predictions, all_gtItems
+    ):
+        user_predictions[user].append((item, score, gtItem))
+
+    hrs, rrs, ndcgs = [], [], []
+    for user, items_scores in user_predictions.items():
+        topK_items = sorted(items_scores, key=lambda x: x[1], reverse=True)[:topK]
+        gtItem = topK_items[0][2]
+        topK_items = [item for item, _, _ in topK_items]
+
+        # Evaluation
+        hrs.append(getHR(topK_items, [gtItem]))
+        rrs.append(getRR(topK_items, [gtItem]))
+        ndcgs.append(getBinaryDCG(topK_items, [gtItem]))
+
+    return np.mean(hrs), np.mean(rrs), np.mean(ndcgs)
 
 
 def train_with_config(args, opts):
-    global _optimizers
-    global _loss_fn
-    global _device
+    global _optimizers, _loss_fn, _device
 
+    # Folder structure checkpoint
     data_name, check_point_path = create_checkpoint_folder(args, opts)
+    # log_path = os.path.join(ROOT_PATH, f"logs/logs_{args.foldername}")
+
+    # Get parent folder
+    parent_path = get_parent_path(ROOT_PATH)
+    processed_data_path = os.path.join(parent_path, args.processed_data_root)
 
     print(f"Running in device: {_device}")
-    # Load Dataset
-    print("Loading dataset ...")
-    data = MovieLensDataset()
-    processed_data_root = os.path.join(ROOT_PATH, args.processed_data_root, data_name)
-    data.load_processed_data(processed_data_root)
-    print("Generating Sparse Matrix...")
-    train, testRatings, testNegatives = (
-        data.trainMatrix,
-        data.testRatings,
-        data.testNegatives,
-    )
-    num_users, num_items = train.shape
-    min_loss = 100000
 
-    # Initialize Model
-    model = NFC(
+    train_data = NCFDataset(
+        processed_data_path,
+        split="train",
+        n_items=args.num_items,
+        num_negative_samples=5,
+    )
+
+    test_data = NCFDataset(
+        processed_data_path,
+        split="test",
+        n_items=args.num_items,
+        num_negative_samples=99,
+    )
+
+    # Dataloader
+    train_loader = DataLoader(
+        train_data, args.batch_size, collate_fn=ncf_negative_sampling
+    )
+    test_loader = DataLoader(
+        test_data, args.batch_size, collate_fn=ncf_negative_sampling
+    )
+
+    # Number of users and items
+    num_users = args.num_users
+    num_items = args.num_items
+
+    # Model
+    model = NeuralCollaborativeFiltering(
         num_users=num_users,
         num_items=num_items,
         mf_dim=args.num_factors,
         layers=args.layers,
     ).to(_device)
-    # model_size_mb = calculate_model_size(model)
 
-    # Init performance
-    (hits, ndcgs) = evaluate_model(
-        model, _device, testRatings, testNegatives, args.topK, args.evaluation_threads
-    )
-
-    hr, ndcg = np.array(hits).mean(), np.array(ndcgs).mean()
-    print("Init: HR = %.4f, NDCG = %.4f" % (hr, ndcg))
-
-    best_hr, best_ndcg, best_iter = hr, ndcg, -1
-    # Define optimizer & loss
+    # Initialize Optimizer & loss function
+    optimizer = _optimizers[args.optimizer](model.parameters(), lr=args.lr)
     loss_fn = _loss_fn[args.loss]
-    optimizers = _optimizers[args.optimizer](model.parameters(), lr=args.lr)
-    losses = dict()
+    losses = {}
+    min_loss = float("inf")
 
-    # Start epoch
+    # Initialize performance
+    (hr, mrr, ndcg) = evaluate_model(model, test_loader, topK=args.topK)
+    print(f"Init: HR = {hr:.4f}, MRR = {mrr:.4f}, NDCG = {ndcg:.4f}")
+    best_hr = hr
+
     for epoch in range(args.epochs):
         print("Training epoch %d." % epoch)
         start_time = time()
-
-        print("Generating Samples")
-        user_input, item_input, labels = data.get_train_data()
-
-        train_dataset = TensorDataset(user_input, item_input, labels)
-        train_loader = DataLoader(
-            train_dataset, batch_size=args.batch_size, shuffle=True
-        )
-        sample_time = (time() - start_time) / 60
-
+        # TODO: We have to actualize in each epoch the data.
         # Curriculum Learning
-        train_epoch(optimizers, loss_fn, train_loader, model, losses)
-        print(f"{epoch} and the loss: ", losses)
-        # Calculate elapsed time for 1 train
-        train_time = (time() - start_time) / 60 - sample_time
+        train_epoch(optimizer, loss_fn, train_loader, model, losses)
 
-        # Evaluation
-        if epoch % args.verbose == 0:
-            (hits, ndcgs) = evaluate_model(
-                model,
-                _device,
-                testRatings,
-                testNegatives,
-                args.topK,
-                args.evaluation_threads,
-            )
-            hr, ndcg, loss = (
-                np.array(hits).mean(),
-                np.array(ndcgs).mean(),
-                losses[epoch],
-            )
+        # Sample Train Time
+        train_time = (time() - start_time) / 60
 
-            test_time = ((time() - start_time) / 60) - train_time - sample_time
-            total_time = (time() - start_time) / 60
+        # Update Losses
+        if losses[epoch] < min_loss:
+            min_loss = losses[epoch]
+        if losses[epoch] < min_loss:
+            min_loss = losses[epoch]
+
+        # Eval model
+        if not (epoch % args.verbose):
+            (hr, mrr, ndcg) = evaluate_model(model, test_loader, topK=args.topK)
+            test_time = ((time() - start_time) / 60) - train_time
+            total_time = train_time + test_time
 
             print(
-                "[%d] time %.2f m - HR = %.4f, NDCG = %.4f, loss = %.4f. Times: Data %.2f m - Train %.2f m - Test %.2f m"
-                % (
-                    epoch,
-                    total_time,
-                    hr,
-                    ndcg,
-                    loss,
-                    sample_time,
-                    train_time,
-                    test_time,
-                )
+                f"[{epoch:d}] Elapsed time: {total_time:.2f}m - Train time: {train_time:.2f}m - Test time: {test_time:.2f}"
+            )
+            print(
+                f"HR = {hr:.4f}, MRR = {mrr:.4f}, NDCG = {ndcg:.4f}, loss = {losses[epoch]:.4f}"
             )
 
             # Save checkpoints
@@ -204,52 +248,31 @@ def train_with_config(args, opts):
             )
 
             # Save lastest model
-            save_checkpoint(
-                chk_path_latest, epoch, args.lr, optimizers, model, min_loss
-            )
+            save_checkpoint(chk_path_latest, epoch, args.lr, optimizer, model, min_loss)
             save_accuracy(
-                check_point_path + "/latest_epoch", hr=hr, ndcg=ndcg, epoch=epoch
+                check_point_path + "/latest_epoch",
+                hr=hr,
+                mrr=mrr,
+                ndcg=ndcg,
+                epoch=epoch,
             )
 
-            # Save model every X epoch
-            if (epoch + 1) % 20 == 0:
+            # Save best Model based on HR
+            if hr < best_hr:
+                best_hr = hr
                 save_checkpoint(
-                    chk_path,
-                    epoch,
-                    args.lr,
-                    optimizers,
-                    model,
-                    min_loss,
-                )
-                save_accuracy(check_point_path + f"/epoch_{epoch}", hr=hr, ndcg=ndcg)
-            # Save best Model
-            if hr > best_hr:
-                best_hr, best_ndcg, best_iter = hr, ndcg, epoch
-
-                save_checkpoint(
-                    chk_path_best, epoch, args.lr, optimizers, model, min_loss
+                    chk_path_best, epoch, args.lr, optimizer, model, min_loss
                 )
                 save_accuracy(
-                    check_point_path + "/best_epoch", hr=hr, ndcg=ndcg, epoch=epoch
+                    check_point_path + "/best_epoch",
+                    hr=hr,
+                    mrr=mrr,
+                    ndcg=ndcg,
+                    epoch=epoch,
                 )
-
-def create_checkpoint_folder(args, opts):
-    normalized_path = os.path.normpath(args.processed_data_root)
-    data_name = os.path.basename(normalized_path)
-    check_point_path = os.path.join(ROOT_PATH, opts.checkpoint, data_name, args.name)
-    try:
-        os.makedirs(check_point_path)
-    except OSError as e:
-        if e.errno != errno.EEXIST:
-            raise RuntimeError(
-                "Unable to create checkpoint directory:", check_point_path
-            )
-            
-    return data_name,check_point_path
 
 
 if __name__ == "__main__":
-
     opts = parse_args()
     args = get_config(opts.config)
     train_with_config(args, opts)

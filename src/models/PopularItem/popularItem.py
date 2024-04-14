@@ -1,14 +1,15 @@
-from typing import List
-import pandas as pd
 import math
+from typing import List
+
+import pandas as pd
 
 
 # TODO: Document Functions + class
 # TODO: Extract the evaluation functions in file (check evaluation on model)
 class PopularItem:
-    def __init__(self, path: str, K:int) -> None:
+    def __init__(self, path: str, K: int) -> None:
         """
-        Constructor, it creates automatically a list of Popular Items of length K given 
+        Constructor, it creates automatically a list of Popular Items of length K given
         the path of the .train.rating and test.rating
 
         Args:
@@ -17,7 +18,7 @@ class PopularItem:
         """
         # TODO: Just for preprocessed list
         self.path = path
-        self.K = K 
+        self.K = K
         # Load data as soon as an instance is created
         self.dt_train, self.dt_test = self._load_data()
         self.popular_items = self._calculate_K_popular_items(K)
@@ -39,7 +40,7 @@ class PopularItem:
         )
 
         return dt_train, dt_test
-    
+
     def _calculate_K_popular_items(self, K):
         popular_items = list(
             self.dt_train[self.dt_train["Rating"] != 0]
@@ -50,9 +51,6 @@ class PopularItem:
             .index
         )
         return popular_items
-
-
-
 
     def calculate_hit_ratio(self, K):
 
@@ -80,6 +78,7 @@ class PopularItem:
             ncdgs.append(ncdg)
         average_ncdg = sum(ncdgs) / len(ncdgs)
         return average_ncdg
+
 
 def hitRatio(ranklist: List, gtItem):
     for item in ranklist:

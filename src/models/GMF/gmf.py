@@ -2,7 +2,7 @@ import torch
 from torch import Tensor, nn
 
 
-class GMF(nn.Module):
+class GeneralMatrixFactorization(nn.Module):
     """
     Implements the Generalized Matrix Factorization (GMF) model within a PyTorch module.
     The model operates by element-wise multiplication of user and item latent feature vectors,

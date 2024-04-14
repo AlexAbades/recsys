@@ -35,12 +35,11 @@ class PreProcessDataNCFContextual:
         key_column: str = None,
         user_column: str = None,
         item_column: str = None,
-        ratings_column: str = None,
+        rating_column: str = None,
         ctx_categorical_columns: List[str] = None,
         ctx_numerical_columns: List[str] = None,
         columns_to_transform: Dict[str, str | List[str]] = None,
         columns_to_normalize: List[str] = None,
-        folder_name: str = None,
         min_interactions: int = 5,
         min_samples_per_user_test_set: int = 1,
         is_binary_classification: bool = True,
@@ -55,7 +54,7 @@ class PreProcessDataNCFContextual:
             data_file=data_file,
             user_column=user_column,
             item_column=item_column,
-            ratings_column=ratings_column,
+            ratings_column=rating_column,
         )
         self.columns_to_transform = columns_to_transform or {}
         self.encodings = {
@@ -65,7 +64,7 @@ class PreProcessDataNCFContextual:
         self._check_transformation_functions()
 
         self.path = path
-        self.ratings_column = ratings_column
+        self.ratings_column = rating_column
         self.user_column = user_column
         self.item_column = item_column
         self.min_interaction = min_interactions
@@ -78,7 +77,7 @@ class PreProcessDataNCFContextual:
         self.columns = self._clean_columns(
             user_column,
             item_column,
-            ratings_column,
+            rating_column,
             ctx_categorical_columns,
             ctx_numerical_columns,
         )
@@ -91,7 +90,7 @@ class PreProcessDataNCFContextual:
         self.data = self.create_data(
             user_column=user_column,
             item_column=item_column,
-            ratings_colum=ratings_column,
+            ratings_colum=rating_column,
             min_interactions=min_interactions,
             ctx_categorical_columns=ctx_categorical_columns,
             ctx_numerical_columns=ctx_numerical_columns,
@@ -123,7 +122,6 @@ class PreProcessDataNCFContextual:
                 print(
                     f"{encoding} transformation performed on {columns_to_transform[encoding]} "
                 )
-            # data = self._logarithmic_encoding(data, ctx_numerical_columns)
         if columns_to_normalize:
             data = self._normalize_columns(data, columns_to_normalize)
         elif ctx_numerical_columns:
@@ -134,15 +132,18 @@ class PreProcessDataNCFContextual:
         else:
             warnings.warn("No Numerical columns have been paseed")
 
+        
         # Data Cleaning
         data = self._initialize_iterative_cleaning(
             data, user_column, item_column, ratings_colum, min_interactions
         )
         print(f"K-core cleaning performed with k: {min_interactions}")
+
+        data = self._clear_ratings(data, ratings_colum)
+        
         # data = self._update_elements_IDs(data)
         data = self._update_elements_IDs_factorized(data)
 
-        data = self._clear_ratings(data, ratings_colum)
 
         self.positive_samples = self._create_positive_sampling(data)
 
@@ -525,11 +526,11 @@ class PreProcessDataNCFContextual:
 
         if is_user_id_sequence_continuous and is_item_id_sequence_continuous:
             return data
-
+        
         # Mapping elements
         user_id_to_index = self._map_elementIDs(data, self.user_column)
         item_id_to_index = self._map_elementIDs(data, self.item_column)
-
+        
         # Apply mappings
         data[self.user_column] = data[self.user_column].map(user_id_to_index)
         data[self.item_column] = data[self.item_column].map(item_id_to_index)

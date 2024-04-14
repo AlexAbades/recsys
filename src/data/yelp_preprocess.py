@@ -26,7 +26,7 @@ if __name__ == "__main__":
             data_file=data_file,
             user_column=user_column,
             item_column=item_column,
-            ratings_column=ratings_column,
+            rating_column=ratings_column,
             ctx_categorical_columns=ctx_categorical_columns,
             ctx_numerical_columns=ctx_numerical_columns,
             columns_to_transform=columns_to_transform,
