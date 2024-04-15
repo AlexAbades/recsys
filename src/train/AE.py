@@ -13,7 +13,7 @@ from torch.nn import Module
 from torch.optim import Optimizer
 from torch.utils.data import DataLoader, TensorDataset
 
-from src.data.ContextRatingDataLoader import ContextRatingDataLoader
+from src.data.cncf_rating_datset import ContextRatingDataLoader
 from src.models.AutoEncoder.AE import AutoEncoder
 from src.utils.eval import mean_absolute_error, root_mean_squared_error
 from src.utils.model_stats.stats import (
@@ -24,7 +24,7 @@ from src.utils.model_stats.stats import (
     save_model_with_params,
     save_opts_args,
 )
-from src.utils.tools.tools import ROOT_PATH, create_checkpoint_folder, get_config
+from src.utils.tools.tools import ROOT_PATH, create_checkpoint_folder, get_config, get_parent_path
 
 
 def parse_args():
@@ -144,14 +144,15 @@ def train_with_config(args, opts):
 
     # Folder structure checkpoint
     data_name, check_point_path = create_checkpoint_folder(args, opts)
-    processed_data_path = os.path.join(ROOT_PATH, args.processed_data_root)
+    # processed_data_path = os.path.join(ROOT_PATH, args.processed_data_root)
 
     print(f"Running in device: {_device}")
     print(f"Batch size: {args.batch_size}, lr: {args.lr}")
 
     # Load preprocessed Data
-    # train_data = ContextDataLoader(processed_data_path + data_name + ".train.rating")
-    # test_data = ContextDataLoader(processed_data_path + data_name + ".test.rating")
+    parent_path = get_parent_path(ROOT_PATH)
+    processed_data_path = os.path.join(parent_path, args.processed_data_root)
+
     train_data = pd.read_csv(
         processed_data_path + data_name + ".train.rating", header=None, sep="\t"
     )

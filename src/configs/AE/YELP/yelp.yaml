@@ -1,0 +1,24 @@
+# Name 
+foldername: frap-no-init-weights-b512-2
+
+# Encoder
+layers: [22, 9]
+
+# Data
+processed_data_root: data/processed/YELP/CNCF/yelp_2.1_ctx/
+
+# Training
+epochs: 100
+batch_size: 256
+lr: 0.001
+optimizer: adam
+dropout: 0
+noise: False
+init_weights: True
+
+
+# Evaluation
+verbose: 1
+
+# Loss
+loss: MSE

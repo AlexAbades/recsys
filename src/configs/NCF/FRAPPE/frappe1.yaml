@@ -1,21 +1,23 @@
-foldername: yelp-b64-f8
+foldername: frappe-ncf-b56-f8-v2
 
-# MLP: in 32+32+22
-layers: [86, 32, 16, 8]
+# MLP: in 32+32
+layers: [64, 32, 16, 8]
 
 # GMF
 num_factors: 8
 
 # Data
 # processed_data_root: /work3/s212784/data/processed/YELP/yelp_2_ctx/
-processed_data_root: data/processed/YELP/CNCF/yelp_2.1_ctx/
-num_items: 143711
+processed_data_root: data/processed/FRAPPE/NCF/frapppe5/
+num_users: 654
+num_items: 1127
+
 num_negative_instances_train: 4
 num_negative_instances_test: 99
 
 # Training
 epochs: 100
-batch_size: 1
+batch_size: 256
 lr: 0.001
 optimizer: adam
 dropout: 0

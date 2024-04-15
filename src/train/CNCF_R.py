@@ -11,7 +11,7 @@ from torch.nn import Module
 from torch.optim import Optimizer
 from torch.utils.data import DataLoader, TensorDataset
 
-from src.data.ContextRatingDataLoader import ContextRatingDataLoader
+from src.data.cncf_rating_datset import ContextRatingDataLoader
 from src.models.contextNFC.context_nfc import DeepNCF
 from src.utils.eval import mean_absolute_error, root_mean_squared_error
 from src.utils.model_stats.stats import save_accuracy, save_checkpoint

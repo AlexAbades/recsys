@@ -12,14 +12,17 @@ from torch.nn import Module
 from torch.optim import Optimizer
 from torch.utils.data import DataLoader
 
-from src.data.ContextInteractionDataLoader import ContextInteractionDataLoader
+from old_versions.cncf_interaction_datset_v2 import ContextInteractionDataLoader
 from src.models.AutoEncoder.AE import AutoEncoder
-from src.models.contextNFC.context_nfc import DeepNCF
+from src.models.CNCF.cncf import CNCF
 from src.utils.eval import getBinaryDCG, getHR, getRR
 from src.utils.model_stats.stats import (
     load_model_with_params,
+    plot_and_save_losses,
     save_accuracy,
     save_checkpoint,
+    save_dict_to_file,
+    save_model_specs,
     save_model_with_params,
 )
 from src.utils.tools.tools import ROOT_PATH, create_checkpoint_folder, get_config
@@ -36,7 +39,7 @@ def parse_args():
     parser.add_argument(
         "-c",
         "--checkpoint",
-        default="checkpoints/CNCF_I",
+        default="checkpoints/CNCF_AE",
         type=str,
         metavar="PATH",
         help="checkpoint directory",
@@ -184,6 +187,7 @@ def train_with_config(args, opts):
     print(f"Running in device: {_device}")
 
     # Load preprocessed Data
+    # TODO: Actualize with new dataset
     train_data = ContextInteractionDataLoader(processed_data_path, split="train")
     test_data = ContextInteractionDataLoader(
         processed_data_path,
@@ -202,7 +206,7 @@ def train_with_config(args, opts):
 
     ae_model = load_model_with_params(ae_model_path, AutoEncoder).to(_device)
 
-    rs_model = DeepNCF(
+    rs_model = CNCF(
         num_users=num_users,
         num_items=num_items,
         num_context=args.ae_bottleneck,
@@ -285,7 +289,7 @@ def train_with_config(args, opts):
             )
 
             # Save best Model based on HR
-            if hr < best_hr:
+            if hr > best_hr:
                 best_hr = hr
                 save_checkpoint(
                     chk_path_best, epoch, args.lr, optimizer, rs_model, min_loss
@@ -297,6 +301,10 @@ def train_with_config(args, opts):
                     ndcg=ndcg,
                     epoch=epoch,
                 )
+    plot_and_save_losses(losses, check_point_path)
+    save_model_specs(rs_model, check_point_path)
+    save_dict_to_file(args, check_point_path)
+    save_dict_to_file(losses, check_point_path, filename="loses.txt")
 
 
 if __name__ == "__main__":

@@ -12,13 +12,23 @@ from torch.nn import Module
 from torch.optim import Optimizer
 from torch.utils.data import DataLoader
 
-from src.data.ContextInteractionDataLoader import \
-    ContextInteractionDataLoader
-from src.models.contextNFC.context_nfc import DeepNCF
+
+from src.data.cncf_collate_fn import cncf_negative_sampling
+from src.data.cncf_interaction_dataset import CNCFDataset
+from src.models.CNCF.cncf import CNCF
 from src.utils.eval import getBinaryDCG, getHR, getRR
-from src.utils.model_stats.stats import save_accuracy, save_checkpoint
-from src.utils.tools.tools import (ROOT_PATH, create_checkpoint_folder,
-                                   get_config)
+from src.utils.model_stats.stats import (
+    calculate_model_size,
+    save_accuracy,
+    save_checkpoint,
+)
+from src.utils.tools.tools import (
+    ROOT_PATH,
+    TextLogger,
+    create_checkpoint_folder,
+    get_config,
+    get_parent_path,
+)
 
 
 def parse_args():
@@ -34,7 +44,7 @@ def parse_args():
     parser.add_argument(
         "--config",
         type=str,
-        default="configs/CNCF/frappe-inter.yaml",
+        default="configs/CNCF/YELP/yelp-1.yaml",
         help="Path to the config file.",
     )
     opts = parser.parse_args()
@@ -150,36 +160,54 @@ def train_with_config(args, opts):
 
     # Folder structure checkpoint
     data_name, check_point_path = create_checkpoint_folder(args, opts)
-    processed_data_path = os.path.join(ROOT_PATH, args.processed_data_root)
+    # processed_data_path = os.chdir(ROOT_PATH, args.processed_data_root)
+    log_path = os.path.join(ROOT_PATH, f"logs/logs_{args.foldername}")
+    # go up a folder
+    parent_path = get_parent_path(ROOT_PATH)
+    processed_data_path = os.path.join(parent_path, args.processed_data_root)
+
+    logger = TextLogger(log_path)
 
     print(f"Running in device: {_device}")
+    logger.log(f"Running in device: {_device}")
 
     # Load preprocessed Data
-    train_data = ContextInteractionDataLoader(
-        processed_data_path, split="train"
+    train_data = CNCFDataset(
+        processed_data_path,
+        split="train",
+        n_items=args.num_items,
+        num_negative_samples=5,
     )
-    test_data = ContextInteractionDataLoader(
+    logger.log(f"Train Data Loaded")
+    test_data = CNCFDataset(
         processed_data_path,
         split="test",
+        n_items=args.num_items,
         num_negative_samples=99,
     )
+    logger.log(f"Test Data Loaded")
 
     # Dataloader
-    train_loader = DataLoader(train_data, args.batch_size)
-    test_loader = DataLoader(test_data, args.batch_size)
+    train_loader = DataLoader(
+        train_data, args.batch_size, collate_fn=cncf_negative_sampling
+    )
+    test_loader = DataLoader(
+        test_data, args.batch_size, collate_fn=cncf_negative_sampling
+    )
 
     # Num User, Items Context Features
-    num_users = train_data.num_users
-    num_items = train_data.num_items
-    num_context = train_data.num_context
+    num_users = 528685
+    num_items = args.num_items
+    num_context = 22
 
-    model = DeepNCF(
+    model = CNCF(
         num_users=num_users,
         num_items=num_items,
         num_context=num_context,
         mf_dim=args.num_factors,
         layers=args.layers,  # Has to be
     ).to(_device)
+    logger.log(calculate_model_size(model))
 
     # Initialize Optimizer and Loss function
     loss_fn = _loss_fn[args.loss]
@@ -195,7 +223,7 @@ def train_with_config(args, opts):
     for epoch in range(args.epochs):
         print("Training epoch %d." % epoch)
         start_time = time()
-        # TODO: We have to actualize in each epoch the data. 
+        # TODO: We have to actualize in each epoch the data.
         # Curriculum Learning
         train_epoch(optimizers, loss_fn, train_loader, model, losses)
 
@@ -256,6 +284,6 @@ def train_with_config(args, opts):
 
 
 if __name__ == "__main__":
-  opts = parse_args()
-  args = get_config(opts.config)
-  train_with_config(args, opts)
+    opts = parse_args()
+    args = get_config(opts.config)
+    train_with_config(args, opts)

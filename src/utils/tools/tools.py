@@ -17,7 +17,7 @@ class TextLogger:
 
     def log(self, log):
         with open(self.log_path, "a+") as f:
-            f.write(log + "\n")
+            f.write(str(log) + "\n")
 
 
 class Loader(yaml.SafeLoader):
@@ -61,6 +61,8 @@ def get_config(config_path):
     config.name = config_name
     return config
 
+def get_parent_path(path):
+    return os.path.abspath(os.path.join(path, os.pardir))
 
 def create_checkpoint_folder(args, opts) -> Tuple[str, str]:
     """
