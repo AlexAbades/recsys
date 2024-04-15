@@ -92,6 +92,7 @@ class CNCFDataset(Dataset):
                 "item": torch.tensor(self.data.iloc[index, 1], dtype=torch.long),
                 "rating": torch.tensor(self.data.iloc[index, 2]),
                 "context": torch.tensor(self.data.iloc[index, 3:]),
+                "gtIem": torch.tensor(self.data.iloc[index, 1], dtype=torch.long),
             }
 
         user, item, rating, *context = self.data.iloc[index]
@@ -99,12 +100,12 @@ class CNCFDataset(Dataset):
         negative_samples = list(self.items - positive_samples)
         negative_samples = sample(negative_samples, self.num_negative_samples)
 
-        # TODO review item retrival
         user = [user] * (self.num_negative_samples + 1)
         negative_ratings = [0] * self.num_negative_samples
-        rating = [rating] * (self.num_negative_samples + 1)
+        # rating = [rating] * (self.num_negative_samples + 1)
         context = [context] * (self.num_negative_samples + 1)
         gtIems = [item] * (self.num_negative_samples + 1)
+
         return {
             "user": torch.tensor(user, dtype=torch.long),
             "item": torch.tensor(negative_samples + [item], dtype=torch.long),
