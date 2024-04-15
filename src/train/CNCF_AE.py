@@ -14,7 +14,7 @@ from torch.utils.data import DataLoader
 
 from old_versions.cncf_interaction_datset_v2 import ContextInteractionDataLoader
 from src.models.AutoEncoder.AE import AutoEncoder
-from src.models.CNCF.cncf import CNCF
+from src.models.CNCF.cncf import ContextualNeuralCollavorativeFiltering
 from src.utils.eval import getBinaryDCG, getHR, getRR
 from src.utils.model_stats.stats import (
     load_model_with_params,
@@ -206,7 +206,7 @@ def train_with_config(args, opts):
 
     ae_model = load_model_with_params(ae_model_path, AutoEncoder).to(_device)
 
-    rs_model = CNCF(
+    rs_model = ContextualNeuralCollavorativeFiltering(
         num_users=num_users,
         num_items=num_items,
         num_context=args.ae_bottleneck,

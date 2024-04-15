@@ -1,16 +1,17 @@
-foldername: frappe-ncf-b256-f8-v2
+foldername: frappe-cncf-b256-f8
 
-# MLP: in 32+32
-layers: [64, 32, 16, 8]
+# MLP: in 32+32+21
+layers: [85, 32, 16, 8]
 
 # GMF
 num_factors: 8
 
 # Data
 # processed_data_root: /work3/s212784/data/processed/YELP/yelp_2_ctx/
-processed_data_root: data/processed/FRAPPE/NCF/frapppe5/
+processed_data_root: data/processed/FRAPPE/CNCF/frapppe5Context/
 num_users: 654
 num_items: 1127
+num_context: 21
 
 num_negative_instances_train: 4
 num_negative_instances_test: 99

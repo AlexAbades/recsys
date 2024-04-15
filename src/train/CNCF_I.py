@@ -15,7 +15,7 @@ from torch.utils.data import DataLoader
 
 from src.data.cncf_collate_fn import cncf_negative_sampling
 from src.data.cncf_interaction_dataset import CNCFDataset
-from src.models.CNCF.cncf import CNCF
+from src.models.CNCF.cncf import ContextualNeuralCollavorativeFiltering
 from src.utils.eval import getBinaryDCG, getHR, getRR
 from src.utils.model_stats.stats import (
     calculate_model_size,
@@ -196,11 +196,11 @@ def train_with_config(args, opts):
     )
 
     # Num User, Items Context Features
-    num_users = 528685
+    num_users = args.num_users
     num_items = args.num_items
-    num_context = 22
+    num_context = args.num_context
 
-    model = CNCF(
+    model = ContextualNeuralCollavorativeFiltering(
         num_users=num_users,
         num_items=num_items,
         num_context=num_context,

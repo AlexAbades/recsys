@@ -8,7 +8,7 @@ from src.models.Embeding.context_aware_embeddings import ContextAwareEmbeddings
 from src.models.MLP.mlp import MultiLayerPerceptron
 
 
-class CNCF(nn.Module):
+class ContextualNeuralCollavorativeFiltering(nn.Module):
     """
     Implements the Context Aware Neural Collaborative Filtering (DeepNCF) model, which combines
     Generalized Matrix Factorization (GMF) and a Multi-Layer Perceptron (MLP).

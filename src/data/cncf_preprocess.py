@@ -14,17 +14,58 @@ from sklearn.preprocessing import MinMaxScaler
 
 class PreProcessDataNCFContextual:
     """
-    Preprocess script.
-    Given a data set with categorical and numercial features the script performs filtering,
-    data transformation, normalization, and one-hot encoding on the dataset.
+    Class to preprocess Data into a suitable format for recommended systems. +
+    # TODO: Describe a bit more. What does it do? What are the main methods? What are the main parameters?
+    # TODO: Change class name, suitable for context and without context. 
+
+    Args:
+        path (str): The path to the data files.
+        data_file (str, optional): The filename of the data file. Defaults to None.
+        meta_file (str, optional): The filename of the metadata file. Defaults to None.
+        key_column (str, optional): The column name to use as the key column for merging data and metadata. Defaults to None.
+        user_column (str, optional): The column name for the user IDs. Defaults to None.
+        item_column (str, optional): The column name for the item IDs. Defaults to None.
+        rating_column (str, optional): The column name for the ratings. Defaults to None.
+        ctx_categorical_columns (List[str], optional): The list of column names for the categorical contextual features. Defaults to None.
+        ctx_numerical_columns (List[str], optional): The list of column names for the numerical contextual features. Defaults to None.
+        columns_to_transform (Dict[str, str | List[str]], optional): The dictionary specifying the columns to transform and the transformation method. Defaults to None.
+        columns_to_normalize (List[str], optional): The list of column names to normalize. Defaults to None.
+        min_interactions (int, optional): The minimum number of interactions required for a user-item pair to be included in the data. Defaults to 5.
+        min_samples_per_user_test_set (int, optional): The minimum number of samples per user in the test set. Defaults to 1.
+        is_binary_classification (bool, optional): Whether to perform binary classification. Defaults to True.
+        train_test_split (str, optional): The type of train-test split to perform. Can be "loo" (leave-one-out) or "standard". Defaults to "loo".
+        sep (str, optional): The separator used in the data files. Defaults to "\t".
+        test_size (int, optional): The size of the test set as a percentage of the total data. Defaults to 0.2.
+
+    Raises:
+        KeyError: If the item column is used as the key column for merging data and metadata.
 
     Parameters:
-    - columns_to_transform (dict): A dictionary containg the transofrmation and the columns to transform
-    {
-        'log': ['cnt'],
-        'cyclical':['weeknumber', 'friends']
-    }
+        path (str): The path to the data files.
+        ratings_column (str): The column name for the ratings.
+        user_column (str): The column name for the user IDs.
+        item_column (str): The column name for the item IDs.
+        min_interaction (int): The minimum number of interactions required for a user-item pair to be included in the data.
+        sep (str): The separator used in the data files.
+        is_binary_classification (bool): Whether to perform binary classification.
+        train_test_split (str): The type of train-test split to perform.
+        test_size (int): The size of the test set as a percentage of the total data.
+        key_column (str): The column name to use as the key column for merging data and metadata.
+        columns (List[str]): The list of cleaned column names.
+        rawData (DataFrame): The raw data loaded from the data file.
+        rawMeta (DataFrame): The raw metadata loaded from the metadata file.
+        data (DataFrame): The preprocessed data.
 
+    Methods:
+        create_data: Preprocesses the data and returns the preprocessed DataFrame.
+        _create_positive_sampling: Computes a dictionary with the interacted items per user.
+        _merge_data_frames: Merges the raw data and metadata DataFrames.
+        _load_data: Loads a DataFrame from a file.
+        _merge_data: Merges two DataFrames.
+        _clean_columns: Cleans and consolidates column names.
+        _clear_ratings: Cleans the ratings column by converting it to numeric and dropping NaN values.
+        _cyclical_encoding_inplace: Performs cyclical encoding on numerical features inplace.
+        _logarithmic_encoding: Performs logarithmic encoding on numerical features.
     """
 
     def __init__(

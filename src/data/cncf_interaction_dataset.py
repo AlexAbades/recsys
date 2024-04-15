@@ -102,13 +102,12 @@ class CNCFDataset(Dataset):
 
         user = [user] * (self.num_negative_samples + 1)
         negative_ratings = [0] * self.num_negative_samples
-        # rating = [rating] * (self.num_negative_samples + 1)
         context = [context] * (self.num_negative_samples + 1)
         gtIems = [item] * (self.num_negative_samples + 1)
 
         return {
             "user": torch.tensor(user, dtype=torch.long),
-            "item": torch.tensor(negative_samples + [item], dtype=torch.long),
+            "item": torch.tensor([item] + negative_samples, dtype=torch.long),
             "rating": torch.tensor([rating] + negative_ratings),
             "context": torch.tensor(context),
             "gtItem": torch.tensor(gtIems),
