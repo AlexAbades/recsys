@@ -12,7 +12,7 @@ from src.data.cncf_collate_fn import ncf_negative_sampling
 from src.data.nfc_dataset import NCFDataset
 from src.models.NCF.nfc import NeuralCollaborativeFiltering
 from src.utils.eval import getBinaryDCG, getHR, getRR
-from src.utils.model_stats.stats import save_accuracy, save_checkpoint
+from src.utils.model_stats.stats import plot_and_save_losses, save_accuracy, save_checkpoint, save_dict_to_file, save_model_specs
 from src.utils.tools.tools import (
     ROOT_PATH,
     create_checkpoint_folder,
@@ -258,7 +258,7 @@ def train_with_config(args, opts):
             )
 
             # Save best Model based on HR
-            if hr < best_hr:
+            if hr > best_hr:
                 best_hr = hr
                 save_checkpoint(
                     chk_path_best, epoch, args.lr, optimizer, model, min_loss
@@ -270,6 +270,10 @@ def train_with_config(args, opts):
                     ndcg=ndcg,
                     epoch=epoch,
                 )
+    plot_and_save_losses(losses, check_point_path)
+    save_model_specs(model, check_point_path)
+    save_dict_to_file(args, check_point_path)
+    save_dict_to_file(losses, check_point_path, filename="loses.txt")
 
 
 if __name__ == "__main__":

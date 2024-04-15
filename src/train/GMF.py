@@ -12,7 +12,7 @@ from src.data.cncf_collate_fn import ncf_negative_sampling
 from src.data.nfc_dataset import NCFDataset
 from src.models.GMF.gmf import GeneralMatrixFactorization
 from src.utils.eval import getBinaryDCG, getHR, getRR
-from src.utils.model_stats.stats import save_accuracy, save_checkpoint
+from src.utils.model_stats.stats import plot_and_save_losses, save_accuracy, save_checkpoint, save_dict_to_file, save_model_specs
 from src.utils.tools.tools import (
     ROOT_PATH,
     create_checkpoint_folder,
@@ -27,7 +27,7 @@ def parse_args():
         "--config",
         type=str,
         nargs="?",
-        default="config/GMF/FRAPPE/frappe1.yaml",
+        default="configs/GMF/FRAPPE/frappe1.yaml",
         help="Configuration file for model specifications",
     )
     parser.add_argument(
@@ -181,7 +181,9 @@ def train_with_config(args, opts):
     num_items = args.num_items
 
     # Model
-    model = GeneralMatrixFactorization()
+    model = GeneralMatrixFactorization(
+        num_users=num_users, num_items=num_items, mf_dim=args.num_factors
+    ).to(_device)
 
     # Initialize Optimizer & loss function
     optimizer = _optimizers[args.optimizer](model.parameters(), lr=args.lr)
@@ -241,7 +243,7 @@ def train_with_config(args, opts):
             )
 
             # Save best Model based on HR
-            if hr < best_hr:
+            if hr > best_hr:
                 best_hr = hr
                 save_checkpoint(
                     chk_path_best, epoch, args.lr, optimizer, model, min_loss
@@ -253,6 +255,10 @@ def train_with_config(args, opts):
                     ndcg=ndcg,
                     epoch=epoch,
                 )
+    plot_and_save_losses(losses, check_point_path)
+    save_model_specs(model, check_point_path)
+    save_dict_to_file(args, check_point_path)
+    save_dict_to_file(losses, check_point_path, filename="loses.txt")
 
 
 if __name__ == "__main__":

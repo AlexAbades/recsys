@@ -82,5 +82,7 @@ class GeneralEmbeddings(nn.Module):
         Returns:
             None
         """
-        nn.init.normal_(self.MF_Embedding_User.weight, mean=0.0, std=0.01)
-        nn.init.normal_(self.MF_Embedding_Item.weight, mean=0.0, std=0.01)
+        if hasattr(self, "MF_Embedding_User"):
+            nn.init.normal_(self.MF_Embedding_User.weight, mean=0.0, std=0.01)
+        if hasattr(self, "MF_Embedding_Item"):
+            nn.init.normal_(self.MF_Embedding_Item.weight, mean=0.0, std=0.01)
