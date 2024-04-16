@@ -1,4 +1,4 @@
-foldername: frappe-ncf-b256-f8-v2
+foldername: frappe-ncf-b256-f8-v1
 
 # MLP: in 32+32
 layers: [64, 32, 16, 8]

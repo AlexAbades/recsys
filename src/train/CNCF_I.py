@@ -102,6 +102,8 @@ def train_epoch(
 
         total_loss += loss.item()
         num_batches += 1
+        if num_batches % 100 == 0:
+            logger.log(f"Batch {num_batches} - Loss: {loss.item()}")
 
     losses[idx_loss] = total_loss / num_batches
 
@@ -166,6 +168,7 @@ def train_with_config(args, opts):
     global _optimizers
     global _loss_fn
     global _device
+    global logger
 
     # Folder structure checkpoint
     data_name, check_point_path = create_checkpoint_folder(args, opts)
@@ -216,7 +219,7 @@ def train_with_config(args, opts):
         mf_dim=args.num_factors,
         layers=args.layers,  # Has to be
     ).to(_device)
-    logger.log(calculate_model_size(model))
+    logger.log(f"Model size: {calculate_model_size(model)} MB")
 
     # Initialize Optimizer and Loss function
     loss_fn = _loss_fn[args.loss]
@@ -231,6 +234,7 @@ def train_with_config(args, opts):
 
     for epoch in range(args.epochs):
         print("Training epoch %d." % epoch)
+        logger.log("Training epoch %d." % epoch)
         start_time = time()
         # TODO: We have to actualize in each epoch the data.
         # Curriculum Learning
@@ -255,6 +259,12 @@ def train_with_config(args, opts):
                 f"[{epoch:d}] Elapsed time: {total_time:.2f}m - Train time: {train_time:.2f}m - Test time: {test_time:.2f}"
             )
             print(
+                f"HR = {hr:.4f}, MRR = {mrr:.4f}, NDCG = {ndcg:.4f}, loss = {losses[epoch]:.4f}"
+            )
+            logger.log(
+                f"[{epoch:d}] Elapsed time: {total_time:.2f}m - Train time: {train_time:.2f}m - Test time: {test_time:.2f}"
+            )
+            logger.log(
                 f"HR = {hr:.4f}, MRR = {mrr:.4f}, NDCG = {ndcg:.4f}, loss = {losses[epoch]:.4f}"
             )
 
