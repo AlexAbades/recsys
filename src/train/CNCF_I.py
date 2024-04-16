@@ -19,8 +19,11 @@ from src.models.CNCF.cncf import ContextualNeuralCollavorativeFiltering
 from src.utils.eval import getBinaryDCG, getHR, getRR
 from src.utils.model_stats.stats import (
     calculate_model_size,
+    plot_and_save_losses,
     save_accuracy,
     save_checkpoint,
+    save_dict_to_file,
+    save_model_specs,
 )
 from src.utils.tools.tools import (
     ROOT_PATH,
@@ -79,6 +82,8 @@ def train_epoch(
 
     idx_loss = len(losses.keys())
     model.train()
+    total_loss = 0.0
+    num_batches = 0
 
     # calculate_memory_allocation()
     for batch in train_loader:
@@ -90,11 +95,15 @@ def train_epoch(
 
         output = model(user_input, item_input, context_input)
         loss = loss_fn(output, ratings)
+
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
-    losses[idx_loss] = loss
+        total_loss += loss.item()
+        num_batches += 1
+
+    losses[idx_loss] = total_loss / num_batches
 
 
 def evaluate_model(model_pos, data_loader, topK: int):
@@ -281,7 +290,10 @@ def train_with_config(args, opts):
                     ndcg=ndcg,
                     epoch=epoch,
                 )
-
+    plot_and_save_losses(losses, check_point_path)
+    save_model_specs(model, check_point_path)
+    save_dict_to_file(args, check_point_path)
+    save_dict_to_file(losses, check_point_path, filename="loses.txt")
 
 if __name__ == "__main__":
     opts = parse_args()
