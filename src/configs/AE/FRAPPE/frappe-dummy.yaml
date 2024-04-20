@@ -1,0 +1,24 @@
+# Name 
+foldername: frappe-dummy-v1
+
+# Encoder
+layers: [21, 9]
+
+# Data
+processed_data_root: data/processed/FRAPPE/AE/frappe5Context/
+
+# Training
+epochs: 100
+batch_size: 256
+lr: 0.001
+optimizer: adam
+dropout: 0
+noise: False
+init_weights: True
+
+
+# Evaluation
+verbose: 1
+
+# Loss
+loss: MSE

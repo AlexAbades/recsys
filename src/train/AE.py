@@ -17,7 +17,7 @@ from src.data.cncf_rating_datset import ContextRatingDataLoader
 from src.models.AutoEncoder.AE import AutoEncoder
 from src.utils.eval import mean_absolute_error, root_mean_squared_error
 from src.utils.model_stats.stats import (
-    plot_and_save_losses,
+    plot_and_save_dict,
     save_accuracy,
     save_dict_to_file,
     save_model_specs,
@@ -188,6 +188,8 @@ def train_with_config(args, opts):
     (rmse, mae) = evaluate_model(model, test_loader)
     print("Init: RMSE = %.4f, MAE = %.4f" % (rmse, mae))
     best_rmse, best_mae, best_iter = rmse, mae, -1
+    rmse_dict = dict()
+    mae_dict = dict()
 
     for epoch in range(args.epochs):
         print("Training epoch %d." % epoch)
@@ -212,6 +214,9 @@ def train_with_config(args, opts):
             (rmse, mae) = evaluate_model(model, test_loader)
             test_time = ((time() - start_time) / 60) - train_time
             total_time = train_time + test_time
+
+        rmse_dict[epoch] = rmse
+        mae_dict[epoch] = mae
 
         print(
             f"[{epoch:d}] Elapsed time: {total_time:.2f}m - Train time: {train_time:.2f}m - Test time: {test_time:.2f}"
@@ -248,7 +253,9 @@ def train_with_config(args, opts):
                 epoch=epoch,
                 loss=losses[epoch],
             )
-    plot_and_save_losses(losses, check_point_path)
+    plot_and_save_dict(losses, check_point_path)
+    plot_and_save_dict(losses, check_point_path, filename="rmse.png")
+    plot_and_save_dict(losses, check_point_path, filename="mae.png")
     save_model_specs(model, check_point_path)
     save_dict_to_file(args, check_point_path)
     save_dict_to_file(losses, check_point_path, filename="loses.txt")

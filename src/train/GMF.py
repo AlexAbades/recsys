@@ -12,9 +12,17 @@ from src.data.cncf_collate_fn import ncf_negative_sampling
 from src.data.nfc_dataset import NCFDataset
 from src.models.GMF.gmf import GeneralMatrixFactorization
 from src.utils.eval import getBinaryDCG, getHR, getRR
-from src.utils.model_stats.stats import plot_and_save_losses, save_accuracy, save_checkpoint, save_dict_to_file, save_model_specs
+from src.utils.model_stats.stats import (
+    calculate_model_size,
+    plot_and_save_dict,
+    save_accuracy,
+    save_checkpoint,
+    save_dict_to_file,
+    save_model_specs,
+)
 from src.utils.tools.tools import (
     ROOT_PATH,
+    TextLogger,
     create_checkpoint_folder,
     get_config,
     get_parent_path,
@@ -84,6 +92,8 @@ def train_epoch(
 
         total_loss += loss.item()
         num_batches += 1
+        if num_batches % 100 == 0:
+            logger.log(f"Batch {num_batches} - Loss: {loss.item()}")
 
     losses[idx_loss] = total_loss / num_batches
 
@@ -142,31 +152,37 @@ def evaluate_model(model_pos: nn.Module, data_loader: DataLoader, topK: int):
 
 
 def train_with_config(args, opts):
-    global _optimizers, _loss_fn, _device
+    global _optimizers, _loss_fn, _device, logger
 
     # Folder structure checkpoint
     data_name, check_point_path = create_checkpoint_folder(args, opts)
-    # log_path = os.path.join(ROOT_PATH, f"logs/logs_{args.foldername}")
+
+    # Logger Path
+    log_path = os.path.join(ROOT_PATH, f"logs/logs_{args.foldername}")
+    logger = TextLogger(log_path)
 
     # Get parent folder
     parent_path = get_parent_path(ROOT_PATH)
     processed_data_path = os.path.join(parent_path, args.processed_data_root)
 
     print(f"Running in device: {_device}")
+    logger.log(f"Running in device: {_device}")
 
     train_data = NCFDataset(
         processed_data_path,
         split="train",
         n_items=args.num_items,
-        num_negative_samples=5,
+        num_negative_samples=args.num_negative_instances_train,
     )
+    logger.log(f"Train Data Loaded")
 
     test_data = NCFDataset(
         processed_data_path,
         split="test",
         n_items=args.num_items,
-        num_negative_samples=99,
+        num_negative_samples=args.num_negative_instances_test,
     )
+    logger.log(f"Test Data Loaded")
 
     # Dataloader
     train_loader = DataLoader(
@@ -184,6 +200,7 @@ def train_with_config(args, opts):
     model = GeneralMatrixFactorization(
         num_users=num_users, num_items=num_items, mf_dim=args.num_factors
     ).to(_device)
+    logger.log(f"Model size: {calculate_model_size(model)} MB")
 
     # Initialize Optimizer & loss function
     optimizer = _optimizers[args.optimizer](model.parameters(), lr=args.lr)
@@ -196,8 +213,14 @@ def train_with_config(args, opts):
     print(f"Init: HR = {hr:.4f}, MRR = {mrr:.4f}, NDCG = {ndcg:.4f}")
     best_hr = hr
 
+    # Initialize dictionaries to store evaluation metrics
+    hr_dict = {}
+    mrr_dict = {}
+    ndcg_dict = {}
+
     for epoch in range(args.epochs):
         print("Training epoch %d." % epoch)
+        logger.log("Training epoch %d." % epoch)
         start_time = time()
         # TODO: We have to actualize in each epoch the data.
         # Curriculum Learning
@@ -209,8 +232,6 @@ def train_with_config(args, opts):
         # Update Losses
         if losses[epoch] < min_loss:
             min_loss = losses[epoch]
-        if losses[epoch] < min_loss:
-            min_loss = losses[epoch]
 
         # Eval model
         if not (epoch % args.verbose):
@@ -218,44 +239,48 @@ def train_with_config(args, opts):
             test_time = ((time() - start_time) / 60) - train_time
             total_time = train_time + test_time
 
-            print(
-                f"[{epoch:d}] Elapsed time: {total_time:.2f}m - Train time: {train_time:.2f}m - Test time: {test_time:.2f}"
-            )
-            print(
-                f"HR = {hr:.4f}, MRR = {mrr:.4f}, NDCG = {ndcg:.4f}, loss = {losses[epoch]:.4f}"
-            )
+        hr_dict[epoch] = hr
+        mrr_dict[epoch] = mrr
+        ndcg_dict[epoch] = ndcg
 
-            # Save checkpoints
-            chk_path = os.path.join(check_point_path, "epoch_{}.bin".format(epoch))
-            chk_path_latest = os.path.join(check_point_path, "latest_epoch.bin")
-            chk_path_best = os.path.join(
-                check_point_path, "best_epoch.bin".format(epoch)
-            )
+        print(
+            f"[{epoch:d}] Elapsed time: {total_time:.2f}m - Train time: {train_time:.2f}m - Test time: {test_time:.2f}"
+        )
+        print(
+            f"HR = {hr:.4f}, MRR = {mrr:.4f}, NDCG = {ndcg:.4f}, loss = {losses[epoch]:.4f}"
+        )
 
-            # Save lastest model
-            save_checkpoint(chk_path_latest, epoch, args.lr, optimizer, model, min_loss)
+        # Save checkpoints
+        chk_path = os.path.join(check_point_path, "epoch_{}.bin".format(epoch))
+        chk_path_latest = os.path.join(check_point_path, "latest_epoch.bin")
+        chk_path_best = os.path.join(check_point_path, "best_epoch.bin".format(epoch))
+
+        # Save lastest model
+        save_checkpoint(chk_path_latest, epoch, args.lr, optimizer, model, min_loss)
+        save_accuracy(
+            check_point_path + "/latest_epoch",
+            hr=hr,
+            mrr=mrr,
+            ndcg=ndcg,
+            epoch=epoch,
+        )
+
+        # Save best Model based on HR
+        if hr > best_hr:
+            best_hr = hr
+            save_checkpoint(chk_path_best, epoch, args.lr, optimizer, model, min_loss)
             save_accuracy(
-                check_point_path + "/latest_epoch",
+                check_point_path + "/best_epoch",
                 hr=hr,
                 mrr=mrr,
                 ndcg=ndcg,
                 epoch=epoch,
             )
+    plot_and_save_dict(losses, check_point_path)
+    plot_and_save_dict(hr_dict, check_point_path, filename="hr.png")
+    plot_and_save_dict(mrr_dict, check_point_path, filename="mrr.png")
+    plot_and_save_dict(ndcg_dict, check_point_path, filename="ndcg.png")
 
-            # Save best Model based on HR
-            if hr > best_hr:
-                best_hr = hr
-                save_checkpoint(
-                    chk_path_best, epoch, args.lr, optimizer, model, min_loss
-                )
-                save_accuracy(
-                    check_point_path + "/best_epoch",
-                    hr=hr,
-                    mrr=mrr,
-                    ndcg=ndcg,
-                    epoch=epoch,
-                )
-    plot_and_save_losses(losses, check_point_path)
     save_model_specs(model, check_point_path)
     save_dict_to_file(args, check_point_path)
     save_dict_to_file(losses, check_point_path, filename="loses.txt")

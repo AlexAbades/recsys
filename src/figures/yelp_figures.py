@@ -1,116 +1,133 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
+from src.utils.tools.tools import TextLogger
 
-aggregated_counts_user = pd.DataFrame()
-aggregated_counts_item = pd.DataFrame()
+# filename = "/work3/s212784/data/processed/YELP/data_yelp.csv"
+filename = "/work3/s212784/data/processed/YELP/yelp.csv"
 
-
-
-filename = "/work3/s212784/data/processed/YELP/data_yelp.csv"
 user_column = "userId"
 item_column = "businessId"
 interaction_column = "stars"
-
-df_iter = pd.read_csv(filename, usecols=[user_column, item_column, interaction_column] , iterator=True, chunksize=100000)
-
-for i, df_chunk in enumerate(df_iter):
-    if not i:
-        print(df_chunk.memory_usage(index=True))
-        print(f"Total: {(df_chunk.memory_usage(index=True).sum())/1000000000}")
-    # Aggregate counts per user for the chunk
-    chunk_counts_user = (
-        df_chunk.groupby(user_column)[interaction_column]
-        .count()
-        .reset_index(name="interaction_per_user")
-    )
-    chunk_counts_item = (
-        df_chunk.groupby(item_column)[interaction_column]
-        .count()
-        .reset_index(name="interaction_per_item")
-    )
-    # Append to the aggregated DataFrame
-    aggregated_counts_user = pd.concat([aggregated_counts_user, chunk_counts_user])
-    aggregated_counts_item = pd.concat([aggregated_counts_item, chunk_counts_item])
-
-# Now, aggregate counts across all chunks (summing up counts if a user appears in multiple chunks)
-final_counts_user = aggregated_counts_user.groupby(user_column).sum().reset_index()
-final_counts_item = aggregated_counts_item.groupby(item_column).sum().reset_index()
-
-# Sort values
-sorted_counts_df_user = final_counts_user.sort_values(
-    by="interaction_per_user", ascending=False
-)
-sorted_counts_df_item = final_counts_item.sort_values(
-    by="interaction_per_item", ascending=False
-)
-
-# Sort values
-sorted_counts_df_user.columns = ["User", "interaction_per_user"]
-sorted_counts_df_item.columns = ["Item", "interaction_per_item"]
-
-# Binning
+sep = "\t"
 bins = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20, 30, np.inf]
-labels = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10-20", "20-30", ">30"]
+labels = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10-20', '20-30', '>30']
 
-# Apply categorization
-final_counts_user["interaction_category"] = pd.cut(
-    final_counts_user["interaction_per_user"], bins=bins, labels=labels, right=False
-)
-final_counts_item["interaction_category"] = pd.cut(
-    final_counts_item["interaction_per_item"], bins=bins, labels=labels, right=False
-)
+logger = TextLogger("yelp_figures.log")
 
-# Aggregate category counts
-category_counts_user = (
-    final_counts_user["interaction_category"].value_counts().sort_index()
-)
-category_counts_item = (
-    final_counts_item["interaction_category"].value_counts().sort_index()
-)
+df = pd.read_csv(filename, usecols=[user_column, item_column, interaction_column], sep=sep)
+logger.log(df.head())
+
+# Assuming df is your original DataFrame with user data
+user_interactions_sorted = df.groupby(user_column)[item_column].count().sort_values(ascending=False)
+sorted_counts_df_user = user_interactions_sorted.reset_index()
+sorted_counts_df_user.columns = ['User', 'Count of Items']
+
+logger.log("data transformed")
+
+plt.figure(figsize=(10, 6))
+plt.bar(range(len(sorted_counts_df_user)), sorted_counts_df_user['Count of Items'])
+
+# Set the y-axis to have logarithmic labels
+y_vals = sorted_counts_df_user['Count of Items']
+y_ticks = [1, 10, 100, 1000, 10000, 100000, 1000000]  # You can adjust these values based on your data range
+plt.yticks(y_ticks, labels=[f'10^{np.log10(y).astype(int)}' if y > 0 else '0' for y in y_ticks])
+plt.xlabel('User')
+plt.ylabel('Logarithmic Count of Items (like)')
+plt.title('Bar Plot with Custom Logarithmic Labels')
+plt.xticks(rotation=45)  # Rotate for better label readability
+plt.savefig("users_interaction_dist.jpg")
 
 
-# Plot Users
-plt.figure(figsize=(12, 8))
-plt.bar(
-    range(len(sorted_counts_df_user)), sorted_counts_df_user["interaction_per_user"]
-)
-plt.xlabel("User")
-plt.ylabel("Count of Items")
-plt.title("Count of Items per User")
-plt.xticks(rotation=45)
-plt.savefig("users_interaction.jpg")
 
-# Plot Items
-plt.figure(figsize=(12, 8))
-plt.bar(
-    range(len(sorted_counts_df_item)), sorted_counts_df_item["interaction_per_item"]
-)
-plt.xlabel("User")
-plt.ylabel("Count of Items")
-plt.title("Count of Items per User")
-plt.xticks(rotation=45)
-plt.savefig("items_interaction.jpg")
 
-# Plt Category Interaction User
-plt.figure(figsize=(12, 8))
-plt.bar(category_counts_user.index.astype(str), category_counts_user.values)
-plt.xlabel("Number of Interactions")
-plt.ylabel("Number of Users")
-plt.title("Number of Users by Interaction Categories")
-plt.xticks(rotation=45)
-plt.savefig("category_interaction_users.jpg")
-category_counts_user_df = category_counts_user.reset_index().rename(columns={'index': 'Interaction Category', 'interaction_category': 'Number of Users'})
-category_counts_user_df.to_csv("category_interaction_users.csv", index=False)
 
-# Plt Category Interaction Item
-plt.figure(figsize=(12, 8))
-plt.bar(category_counts_item.index.astype(str), category_counts_item.values)
-plt.xlabel("Number of Interactions")
-plt.ylabel("Number of Items")
-plt.title("Number of Items by Interaction Categories")
-plt.xticks(rotation=45)
-plt.savefig("category_interaction_items.jpg")
 
-category_counts_item_df = category_counts_item.reset_index().rename(columns={'index': 'Interaction Category', 'interaction_category': 'Number of Items'})
-category_counts_item_df.to_csv("category_interaction_users.csv", index=False)
+
+# plt.figure(figsize=(10, 6))
+# plt.bar(range(len(sorted_counts_df_user)), sorted_counts_df_user['Count of Items'], log=True)  # Logarithmic y-axis
+# plt.xlabel('User')
+# plt.ylabel('Count of Items')
+# plt.title('Logarithmic Count of Items per User')
+# plt.xticks(range(len(sorted_counts_df_user)), sorted_counts_df_user['User'], rotation=45)  # Apply rotation for better label readability
+# 
+
+
+
+
+
+
+
+
+
+# logger.log("Data loaded")
+# logger.log(df.head())
+
+# # Interaction per user
+# interaction_counts_user = df.groupby(user_column)[interaction_column].size()
+# user_interactions_sorted = interaction_counts_user.sort_values(ascending=False).copy()
+# sorted_counts_df_user = user_interactions_sorted.reset_index()
+# sorted_counts_df_user.columns = ['User', 'Count of Items'] 
+
+# # Plot Users
+# plt.figure(figsize=(12, 8))
+# plt.bar(
+#     range(len(sorted_counts_df_user)), sorted_counts_df_user["Count of Items"]
+# )
+# plt.xlabel("User Id")
+# plt.ylabel("Nº of interactions")
+# plt.title("Count of Interacted Items per User")
+# plt.xticks(rotation=45)
+# plt.ylim(0, max(sorted_counts_df_user["Count of Items"]) + 100) 
+# plt.savefig("users_interaction.jpg")
+# logger.log("Interaction per user done")
+
+# # Interaction per item
+# interaction_counts_item = df.groupby(item_column)[interaction_column].size()
+# item_interactions_sorted = interaction_counts_item.sort_values(ascending=False).copy()
+# sorted_counts_df_item = item_interactions_sorted.reset_index()
+# sorted_counts_df_item.columns = ['Item', 'Count of Users']
+
+# # Plot Items
+# plt.figure(figsize=(12, 8))
+# plt.bar(
+#     range(len(sorted_counts_df_item)), sorted_counts_df_item["Count of Users"]
+# )
+# plt.xlabel("Item Id")
+# plt.ylabel("Nº of interactions")
+# plt.title("Count of Interacted Users per Item")
+# plt.xticks(rotation=45)
+# plt.ylim(0, max(sorted_counts_df_item["Count of Items"]) + 100) 
+# plt.savefig("items_interaction.jpg")
+
+# logger.log("Interaction per uitem done")
+
+# # Bin the data into the specified categories
+# interaction_categories_user = pd.cut(interaction_counts_user, bins=bins, labels=labels, right=False)
+# interaction_categories_item = pd.cut(interaction_counts_item, bins=bins, labels=labels, right=False)
+# logger.log("Binning done")
+
+# # Count the number of users in each category
+# category_counts_user = interaction_categories_user.value_counts().sort_index()
+# category_counts_item = interaction_categories_item.value_counts().sort_index()
+# logger.log("Counting done")
+
+# #  Plot User categories
+# plt.figure(figsize=(12, 8))
+# plt.bar(category_counts_user.index, category_counts_user.values)
+# plt.xlabel('Number of Interactions')
+# plt.ylabel('Number of Users')
+# plt.title('Number of Users by Interaction Categories')
+# plt.xticks(rotation=45) 
+# plt.savefig("users_interaction_category.jpg")
+# category_counts_user.to_csv("frequency_intercation_user.csv")
+
+# # Plot Item categories 
+# plt.figure(figsize=(12, 8))
+# plt.bar(category_counts_item.index, category_counts_item.values)
+# plt.xlabel('Number of Interactions')
+# plt.ylabel('Number of Items')
+# plt.title('Number of Items by Interaction Categories')
+# plt.xticks(rotation=45) 
+# plt.savefig("item_interaction_category.jpg")
+# category_counts_item.to_csv("frequency_intercation_item.csv")

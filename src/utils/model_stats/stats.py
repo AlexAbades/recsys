@@ -117,7 +117,7 @@ def save_model_specs(model, folder_path, filename="model_specs.txt"):
     print(f"Model specifications saved to {file_path}")
 
 
-def plot_and_save_losses(loss_dict, folder_path, filename="loss_plot.png"):
+def plot_and_save_dict(loss_dict, folder_path, filename="loss_plot.png"):
     """
     Plots the training losses and saves the plot to a given folder path.
 

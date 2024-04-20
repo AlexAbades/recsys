@@ -19,7 +19,7 @@ from src.models.CNCF.cncf import ContextualNeuralCollavorativeFiltering
 from src.utils.eval import getBinaryDCG, getHR, getRR
 from src.utils.model_stats.stats import (
     calculate_model_size,
-    plot_and_save_losses,
+    plot_and_save_dict,
     save_accuracy,
     save_checkpoint,
     save_dict_to_file,
@@ -288,7 +288,7 @@ def train_with_config(args, opts):
             )
 
             # Save best Model based on HR
-            if hr < best_hr:
+            if hr > best_hr:
                 best_hr = hr
                 save_checkpoint(
                     chk_path_best, epoch, args.lr, optimizers, model, min_loss
@@ -300,7 +300,7 @@ def train_with_config(args, opts):
                     ndcg=ndcg,
                     epoch=epoch,
                 )
-    plot_and_save_losses(losses, check_point_path)
+    plot_and_save_dict(losses, check_point_path)
     save_model_specs(model, check_point_path)
     save_dict_to_file(args, check_point_path)
     save_dict_to_file(losses, check_point_path, filename="loses.txt")
