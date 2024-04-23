@@ -8,7 +8,7 @@ num_factors: 8
 
 # Data
 # processed_data_root: /work3/s212784/data/processed/YELP/yelp_2_ctx/
-processed_data_root: data/processed/FRAPPE/CNCF/frapppe5Context/
+processed_data_root: data/processed/FRAPPE/CNCF/frappe5Context/
 num_users: 654
 num_items: 1127
 num_context: 21

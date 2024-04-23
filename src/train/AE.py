@@ -142,6 +142,8 @@ def train_with_config(args, opts):
     global _loss_fn
     global _device
 
+    s1  = time()
+
     # Folder structure checkpoint
     data_name, check_point_path = create_checkpoint_folder(args, opts)
     # processed_data_path = os.path.join(ROOT_PATH, args.processed_data_root)
@@ -253,9 +255,25 @@ def train_with_config(args, opts):
                 epoch=epoch,
                 loss=losses[epoch],
             )
+
+            # Plot and save losses every 23 hours 
+            s2 = time()
+            elapsed_time = s2 - s1
+            if elapsed_time > (23 * 60 * 60):
+                plot_and_save_dict(losses, check_point_path)
+                plot_and_save_dict(rmse_dict, check_point_path, filename="rmse.png")
+                plot_and_save_dict(mae_dict, check_point_path, filename="mae.png")
+
+                save_model_specs(model, check_point_path)
+                save_dict_to_file(args, check_point_path)
+                save_dict_to_file(losses, check_point_path, filename="loses.txt")
+                
+                s1 = time()
+
     plot_and_save_dict(losses, check_point_path)
-    plot_and_save_dict(losses, check_point_path, filename="rmse.png")
-    plot_and_save_dict(losses, check_point_path, filename="mae.png")
+    plot_and_save_dict(rmse_dict, check_point_path, filename="rmse.png")
+    plot_and_save_dict(mae_dict, check_point_path, filename="mae.png")
+
     save_model_specs(model, check_point_path)
     save_dict_to_file(args, check_point_path)
     save_dict_to_file(losses, check_point_path, filename="loses.txt")

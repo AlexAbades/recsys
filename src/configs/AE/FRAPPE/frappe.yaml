@@ -1,17 +1,16 @@
 # Name 
-foldername: frap-no-init-weights-b512-2
+foldername: frappeV2-
 
 # Encoder
-layers: [21, 9]
+layers: [12, 9]
 
 # Data
-processed_data_root: data/processed/frappeCtxA/
-raw_data_root: data/processed/frappe/
+processed_data_root: data/processed/FRAPPE/CNCF/frapppe5ContextV2/
 
 # Training
 epochs: 100
-batch_size: 512
-lr: 0.0001
+batch_size: 256
+lr: 0.001
 optimizer: adam
 dropout: 0
 noise: False

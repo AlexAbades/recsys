@@ -1,14 +1,14 @@
 # Name 
-foldername: frappe-dummy-v1
+foldername: frappe-dummy-v3
 
 # Encoder
-layers: [21, 9]
+layers: [21, 16, 9]
 
 # Data
 processed_data_root: data/processed/FRAPPE/AE/frappe5Context/
 
 # Training
-epochs: 100
+epochs: 200
 batch_size: 256
 lr: 0.001
 optimizer: adam

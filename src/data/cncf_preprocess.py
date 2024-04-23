@@ -16,7 +16,7 @@ class PreProcessDataNCFContextual:
     """
     Class to preprocess Data into a suitable format for recommended systems. +
     # TODO: Describe a bit more. What does it do? What are the main methods? What are the main parameters?
-    # TODO: Change class name, suitable for context and without context. 
+    # TODO: Change class name, suitable for context and without context.
 
     Args:
         path (str): The path to the data files.
@@ -101,6 +101,7 @@ class PreProcessDataNCFContextual:
         self.encodings = {
             "log": self._logarithmic_encoding,
             "cyclical": self._cyclical_encoding_inplace,
+            "binary": self._binary_encoding,
         }
         self._check_transformation_functions()
 
@@ -121,6 +122,7 @@ class PreProcessDataNCFContextual:
             rating_column,
             ctx_categorical_columns,
             ctx_numerical_columns,
+            *columns_to_transform.values(),
         )
         self._load_datasets(
             path=path,
@@ -173,7 +175,6 @@ class PreProcessDataNCFContextual:
         else:
             warnings.warn("No Numerical columns have been paseed")
 
-        
         # Data Cleaning
         data = self._initialize_iterative_cleaning(
             data, user_column, item_column, ratings_colum, min_interactions
@@ -181,10 +182,9 @@ class PreProcessDataNCFContextual:
         print(f"K-core cleaning performed with k: {min_interactions}")
 
         data = self._clear_ratings(data, ratings_colum)
-        
+
         # data = self._update_elements_IDs(data)
         data = self._update_elements_IDs_factorized(data)
-
 
         self.positive_samples = self._create_positive_sampling(data)
 
@@ -295,9 +295,15 @@ class PreProcessDataNCFContextual:
             if not i:
                 continue
             if isinstance(i, str):
-                clean_columns.append(i)
+                if i not in clean_columns:
+                    clean_columns.append(i)
                 continue
-            clean_columns.extend(i)
+            if isinstance(i, (list, tuple)):
+                for element in i:
+                    if element not in clean_columns:
+                        clean_columns.append(element)
+
+        print(f'Processed columns: {", ".join(clean_columns)}')
         return clean_columns
 
     def _clear_ratings(self, df: DataFrame, rating_column: str) -> DataFrame:
@@ -311,6 +317,9 @@ class PreProcessDataNCFContextual:
             # Use .loc to ensure modifications are done on the original DataFrame
             df.loc[:, f"sin_{feature}"] = np.sin((2 * np.pi * df[feature]) / max_value)
             df.loc[:, f"cos_{feature}"] = np.cos((2 * np.pi * df[feature]) / max_value)
+        
+        # Drop columns that were encoded
+        df.drop(columns=[feature], inplace=True)
         return df
 
     def _logarithmic_encoding(
@@ -353,6 +362,21 @@ class PreProcessDataNCFContextual:
         )
 
         return data
+
+    def _binary_encoding(
+        self, df: DataFrame, columns_to_encode: List[str]
+    ) -> DataFrame:
+        """
+        Function that encodes a nominal column with two unique values into binary values.
+        """
+        for feature in columns_to_encode:
+            unique_values = df[feature].unique()
+            if len(unique_values) > 2:
+                raise ValueError("The column has more than 2 unique values")
+            binary_encoding = {unique_values[0]: 0, unique_values[1]: 1}
+            df[feature] = df[feature].map(binary_encoding)
+
+        return df
 
     def _initialize_one_hot_encoding(
         self, df: DataFrame, contextual_features: List[str]
@@ -567,11 +591,11 @@ class PreProcessDataNCFContextual:
 
         if is_user_id_sequence_continuous and is_item_id_sequence_continuous:
             return data
-        
+
         # Mapping elements
         user_id_to_index = self._map_elementIDs(data, self.user_column)
         item_id_to_index = self._map_elementIDs(data, self.item_column)
-        
+
         # Apply mappings
         data[self.user_column] = data[self.user_column].map(user_id_to_index)
         data[self.item_column] = data[self.item_column].map(item_id_to_index)
@@ -678,7 +702,9 @@ class PreProcessDataNCFContextual:
           - Reduction: {ratio_reduction_items:.2f}%.
         Total number of interactions: {num_interactions_processed}
           - Reduction: {ratio_reductions_interactions:.2f}%. 
-        Columns used: {', '.join(self.columns)}."""
+        Number of Contextual Features: {len(self.data.columns)-3}.
+        Columns used: {', '.join(self.columns)}.
+        """
         )
 
         try:

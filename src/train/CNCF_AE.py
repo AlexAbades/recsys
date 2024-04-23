@@ -13,6 +13,8 @@ from torch.optim import Optimizer
 from torch.utils.data import DataLoader
 
 from old_versions.cncf_interaction_datset_v2 import ContextInteractionDataLoader
+from src.data.cncf_collate_fn import cncf_negative_sampling
+from src.data.cncf_interaction_dataset import CNCFDataset
 from src.models.AutoEncoder.AE import AutoEncoder
 from src.models.CNCF.cncf import ContextualNeuralCollavorativeFiltering
 from src.utils.eval import getBinaryDCG, getHR, getRR
@@ -25,7 +27,12 @@ from src.utils.model_stats.stats import (
     save_model_specs,
     save_model_with_params,
 )
-from src.utils.tools.tools import ROOT_PATH, create_checkpoint_folder, get_config
+from src.utils.tools.tools import (
+    ROOT_PATH,
+    create_checkpoint_folder,
+    get_config,
+    get_parent_path,
+)
 
 _device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -181,28 +188,36 @@ def train_with_config(args, opts):
 
     # Folder structure checkpoint
     data_name, check_point_path = create_checkpoint_folder(args, opts)
-    processed_data_path = os.path.join(ROOT_PATH, args.processed_data_root)
+    # Load AE model
     ae_model_path = os.path.join(ROOT_PATH, opts.ae_path)
+    # Get parent folder
+    parent_path = get_parent_path(ROOT_PATH)
+    processed_data_path = os.path.join(parent_path, args.processed_data_root)
 
     print(f"Running in device: {_device}")
 
     # Load preprocessed Data
-    # TODO: Actualize with new dataset
-    train_data = ContextInteractionDataLoader(processed_data_path, split="train")
-    test_data = ContextInteractionDataLoader(
+    train_data = CNCFDataset(
+        processed_data_path,
+        split="train",
+        n_items=args.num_items,
+        num_negative_samples=args.num_negative_instances_train,
+    )
+    test_data = CNCFDataset(
         processed_data_path,
         split="test",
-        num_negative_samples=99,
+        n_items=args.num_items,
+        num_negative_samples=args.num_negative_instances_test,
     )
 
     # Dataloader
-    train_loader = DataLoader(train_data, args.batch_size)
-    test_loader = DataLoader(test_data, args.batch_size)
+    train_loader = DataLoader(train_data, args.batch_size, collate_fn=cncf_negative_sampling)
+    test_loader = DataLoader(test_data, args.batch_size, collate_fn=cncf_negative_sampling)
 
     # Num User, Items Context Features
-    num_users = train_data.num_users
-    num_items = train_data.num_items
-    num_context = train_data.num_context
+    num_users = args.num_users
+    num_items = args.num_items
+    num_context = args.num_context
 
     ae_model = load_model_with_params(ae_model_path, AutoEncoder).to(_device)
 
@@ -227,10 +242,14 @@ def train_with_config(args, opts):
     print(f"Init: HR = {hr:.4f}, MRR = {mrr:.4f}, NDCG = {ndcg:.4f}")
     best_hr = hr
 
+    # Initialize dictionaries to store evaluation metrics
+    hr_dict = {}
+    mrr_dict = {}
+    ndcg_dict = {}
+
     for epoch in range(args.epochs):
         print("Training epoch %d." % epoch)
         start_time = time()
-        # TODO: We have to actualize in each epoch the data.
         # Curriculum Learning
         train_epoch(
             optimizer,
@@ -261,6 +280,10 @@ def train_with_config(args, opts):
             )
             test_time = ((time() - start_time) / 60) - train_time
             total_time = train_time + test_time
+
+            hr_dict[epoch] = hr
+            mrr_dict[epoch] = mrr
+            ndcg_dict[epoch] = ndcg
 
             print(
                 f"[{epoch:d}] Elapsed time: {total_time:.2f}m - Train time: {train_time:.2f}m - Test time: {test_time:.2f}"
@@ -302,6 +325,10 @@ def train_with_config(args, opts):
                     epoch=epoch,
                 )
     plot_and_save_dict(losses, check_point_path)
+    plot_and_save_dict(hr_dict, check_point_path, filename="hr.png")
+    plot_and_save_dict(mrr_dict, check_point_path, filename="mrr.png")
+    plot_and_save_dict(ndcg_dict, check_point_path, filename="ndcg.png")
+
     save_model_specs(rs_model, check_point_path)
     save_dict_to_file(args, check_point_path)
     save_dict_to_file(losses, check_point_path, filename="loses.txt")

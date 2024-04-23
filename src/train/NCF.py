@@ -159,7 +159,8 @@ def evaluate_model(model_pos: nn.Module, data_loader: DataLoader, topK: int):
 
 def train_with_config(args, opts):
     global _optimizers, _loss_fn, _device, logger
-
+    # Time to save the model preventing hpc killing
+    s1 = time()
     # Folder structure checkpoint
     data_name, check_point_path = create_checkpoint_folder(args, opts)
     
@@ -293,6 +294,24 @@ def train_with_config(args, opts):
                 ndcg=ndcg,
                 epoch=epoch,
             )
+        # Plot and save losses every 23 hours 
+        s2 = time()
+        elapsed_time = s2 - s1
+        if elapsed_time >= (23 * 60 * 60):
+            plot_and_save_dict(losses, check_point_path)
+            plot_and_save_dict(hr_dict, check_point_path, filename="hr.png")
+            plot_and_save_dict(mrr_dict, check_point_path, filename="mrr.png")
+            plot_and_save_dict(ndcg_dict, check_point_path, filename="ndcg.png")
+
+            save_model_specs(model, check_point_path)
+            save_dict_to_file(args, check_point_path)
+            save_dict_to_file(losses, check_point_path, filename="loses.txt")
+            save_dict_to_file(hr_dict, check_point_path, filename="hr.txt")
+            save_dict_to_file(mrr_dict, check_point_path, filename="mrr.txt")
+            save_dict_to_file(ndcg_dict, check_point_path, filename="ndcg.txt")
+            s1 = time()
+    
+    # Save final model
     plot_and_save_dict(losses, check_point_path)
     plot_and_save_dict(hr_dict, check_point_path, filename="hr.png")
     plot_and_save_dict(mrr_dict, check_point_path, filename="mrr.png")
@@ -301,6 +320,9 @@ def train_with_config(args, opts):
     save_model_specs(model, check_point_path)
     save_dict_to_file(args, check_point_path)
     save_dict_to_file(losses, check_point_path, filename="loses.txt")
+    save_dict_to_file(hr_dict, check_point_path, filename="hr.txt")
+    save_dict_to_file(mrr_dict, check_point_path, filename="mrr.txt")
+    save_dict_to_file(ndcg_dict, check_point_path, filename="ndcg.txt")
 
 
 if __name__ == "__main__":

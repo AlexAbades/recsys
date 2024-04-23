@@ -12,9 +12,11 @@ ae_bottleneck: 9
 
 
 # Data
-processed_data_root: data/processed/FRAPPE/frappe5/
-num_negative_instances_train: 4
-num_negative_instances_test: 99  # All Data on the test set
+processed_data_root: data/processed/FRAPPE/CNCF/frappe5Context/
+num_users: 654
+num_items: 1127
+num_context: 21
+
 
 # Training
 epochs: 100
@@ -22,11 +24,13 @@ batch_size: 256
 lr: 0.001
 optimizer: adam
 dropout: 0
+num_negative_instances_train: 4
 
 # Evaluation
 topK: 10
 evaluation_threads: 1
 verbose: 1
+num_negative_instances_test: 99  # All Data on the test set
 
 # Loss
 loss: BCE
