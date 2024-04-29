@@ -56,7 +56,9 @@ class AutoEncoder(nn.Module):
         decoder_layers = decoder_layers[:-1]
 
         self.encoder = nn.Sequential(*encoder_layers)
-        self.decoder = nn.Sequential(*decoder_layers, nn.Sigmoid())
+        self.decoder = nn.Sequential(
+            *decoder_layers, nn.Sigmoid() if activation == nn.ReLU else activation()
+        )
 
         if init_weights:
             self._init_weights()

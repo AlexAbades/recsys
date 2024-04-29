@@ -1,5 +1,5 @@
 # Name 
-foldername: frappeV2-
+foldername: frappeV2-tanh
 
 # Encoder
 layers: [12, 9]

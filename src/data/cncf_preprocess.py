@@ -116,6 +116,10 @@ class PreProcessDataNCFContextual:
         self.test_size = test_size
         self.key_column = key_column
 
+        # columns_to_normalize_from_transformation = self._exculde_cyclical_values(
+        #     columns_to_transform
+        # )
+
         self.columns = self._clean_columns(
             user_column,
             item_column,
@@ -273,6 +277,27 @@ class PreProcessDataNCFContextual:
         dataframe = data.merge(metadata, on=key_column)
         return dataframe
 
+    def _exculde_cyclical_values(self, columns_to_transform: dict) -> List[str]:
+        """
+        Given a dictionary of columns to transform, it returns a list of columns to include on the normalization.
+        It excludes the cyclical columns.
+
+        Parameters:
+            - columns_to_transform (dict): A dictionary containing the columns to transform and the transformation method.
+
+        Returns:
+            - List[str]: A list of columns to include in the normalization.
+        """
+        columns = []
+        for key, values in columns_to_transform.items():
+            if key == "cyclical":
+                continue
+            if isinstance(values, list):
+                columns.extend(values)
+            elif isinstance(values, str):
+                columns.append(values)
+        return columns
+
     def _clean_columns(self, *args: str | List[str] | Tuple[str] | None) -> List[str]:
         """
         Cleans and consolidates column names from various input formats into a single list of strings.
@@ -311,15 +336,27 @@ class PreProcessDataNCFContextual:
         df = df.dropna(subset=[rating_column])
         return df
 
-    def _cyclical_encoding_inplace(self, df: DataFrame, numerical_features: List[str]):
+    def _cyclical_encoding_inplace(
+        self, df: DataFrame, numerical_features: List[str]
+    ) -> DataFrame:
+        """
+        Applies cyclical encoding to numerical features in a DataFrame.
+
+        Parameters:
+        - df (DataFrame): The pandas DataFrame containing the data to be transformed.
+        - numerical_features (List[str]): A list of column names in `df` that correspond to the numerical
+
+        Returns:
+        - DataFrame: The modified DataFrame with cyclical encoded numerical features.
+        """
         for feature in numerical_features:
             max_value = df[feature].max()
-            # Use .loc to ensure modifications are done on the original DataFrame
             df.loc[:, f"sin_{feature}"] = np.sin((2 * np.pi * df[feature]) / max_value)
             df.loc[:, f"cos_{feature}"] = np.cos((2 * np.pi * df[feature]) / max_value)
-        
-        # Drop columns that were encoded
-        df.drop(columns=[feature], inplace=True)
+
+        df.drop(columns=[*numerical_features], inplace=True)
+        new_columns = [x for x in self.columns if x not in numerical_features]
+        self.columns = new_columns
         return df
 
     def _logarithmic_encoding(

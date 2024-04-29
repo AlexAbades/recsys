@@ -12,7 +12,7 @@ from src.data.cncf_collate_fn import ncf_negative_sampling
 from src.data.nfc_dataset import NCFDataset
 from src.models.NCF.nfc import NeuralCollaborativeFiltering
 from src.utils.eval import getBinaryDCG, getHR, getRR
-from src.utils.model_stats.stats import calculate_model_size, plot_and_save_dict, save_accuracy, save_checkpoint, save_dict_to_file, save_model_specs
+from src.utils.model_stats.stats import calculate_memory_allocation, calculate_model_size, plot_and_save_dict, save_accuracy, save_checkpoint, save_dict_to_file, save_model_specs
 from src.utils.tools.tools import (
     ROOT_PATH,
     TextLogger,
@@ -59,6 +59,11 @@ _optimizers = {"adam": optim.Adam, "SGD": optim.SGD}
 _loss_fn = {"BCE": nn.BCELoss(), "MSE": nn.MSELoss()}
 
 
+def is_model_on_gpu(model):
+    # Get the device of the first parameter
+    first_param_device = next(model.parameters()).device
+    return str(first_param_device).startswith('cuda')
+
 def train_epoch(
     optimizer: optim.Optimizer,
     loss_fn: nn.Module,
@@ -89,7 +94,12 @@ def train_epoch(
         labels = batch["rating"].to(_device)
         labels = labels.view(-1, 1)
 
+        # calculate_memory_allocation()
+        if num_batches == 0:
+            calculate_memory_allocation()
+
         output = model(user_input, item_input)
+        
         loss = loss_fn(output, labels)
 
         optimizer.zero_grad()
@@ -98,9 +108,12 @@ def train_epoch(
 
         total_loss += loss.item()
         num_batches += 1
+        
+        
 
         if num_batches % 100 == 0:
             print(f"Batch {num_batches} - Loss: {loss.item()}")
+            logger.log(f"Batch {num_batches} - Loss: {loss.item()}")
 
     losses[idx_loss] = total_loss / num_batches
 
@@ -210,6 +223,8 @@ def train_with_config(args, opts):
         mf_dim=args.num_factors,
         layers=args.layers,
     ).to(_device)
+    model_on_gpu = is_model_on_gpu(model)
+    print("Model on GPU:", model_on_gpu)
 
     logger.log(f"Model size: {calculate_model_size(model)} MB")
 

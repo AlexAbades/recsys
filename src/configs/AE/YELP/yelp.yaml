@@ -1,11 +1,12 @@
 # Name 
-foldername: frap-no-init-weights-b512-2
+foldername: yelpV2-tanh-c13-b256
 
 # Encoder
-layers: [22, 9]
+layers: [13, 6]
 
 # Data
-processed_data_root: data/processed/YELP/CNCF/yelp_2.1_ctx/
+# processed_data_root: data/processed/YELP/CNCF/yelp5Context/
+processed_data_root: data/processed/YELP/CNCF/yelp5ContextV2/
 
 # Training
 epochs: 100

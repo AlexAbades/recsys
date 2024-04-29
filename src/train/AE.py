@@ -162,6 +162,7 @@ def train_with_config(args, opts):
         processed_data_path + data_name + ".test.rating", header=None, sep="\t"
     )
     data = pd.concat([train_data, test_data])
+    print(data.shape)
     train_data, test_data = train_test_split(data, test_size=0.2, random_state=42)
     train_context_data = torch.tensor(
         train_data.iloc[:, 3:].values.astype(float), dtype=torch.float
@@ -178,7 +179,7 @@ def train_with_config(args, opts):
     test_loader = DataLoader(test_context_data, args.batch_size)
 
     # Model
-    model = AutoEncoder(hidden_dims=args.layers, dropout=args.dropout, init_weights=args.init_weights).to(_device)
+    model = AutoEncoder(hidden_dims=args.layers, dropout=args.dropout, init_weights=args.init_weights, activation=nn.Tanh).to(_device)
 
     # Initialize Optimizer and Loss function
     loss_fn = _loss_fn[args.loss]

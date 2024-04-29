@@ -95,6 +95,7 @@ if __name__ == "__main__":
     ]
     data["daytime"] = np.select(conditions, choices, default="night")
     data["daytime"] = data["daytime"].astype("category")
+    data["hour"] = data["date"].dt.hour
     print("Daytime done")
 
     # Obtain weeknumber
@@ -154,6 +155,7 @@ if __name__ == "__main__":
         "longitude",
         "isweekend",
         "daytime",
+        "hour",
         "week_number",
         "season",
         "isHoliday",
@@ -164,6 +166,7 @@ if __name__ == "__main__":
 
     # Save csv
     os.makedirs(data_processed_folder, exist_ok=True)
+    file_name = "yelp_data_V2.csv"
     file_path = os.path.join(data_processed_folder, file_name)
     print(f"Attempting to save in directory: {data_processed_folder}")
 

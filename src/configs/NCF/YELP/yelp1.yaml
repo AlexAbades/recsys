@@ -1,14 +1,16 @@
-# MLP: in 32+32+21
-layers: [64, 32, 16, 8]
+foldername: YELP-NCF-b256-f8
+
+# MLP
+layers: [32, 16, 8]
 
 # GMF
 num_factors: 8
 
 # Data
-processed_data_root: /work3/s212784/data/processed/YELP/NFC/
-raw_data_root: data/processed/frappe/
-num_negative_instances_train: 4
-num_negative_instances_test: 99
+processed_data_root: data/processed/YELP/NCF/yelp5/
+num_users: 215366
+num_items: 95895
+
 
 # Training
 epochs: 100
@@ -16,11 +18,13 @@ batch_size: 256
 lr: 0.001
 optimizer: adam
 dropout: 0
+num_negative_instances_train: 4
 
 # Evaluation
 topK: 10
 evaluation_threads: 1
 verbose: 1
+num_negative_instances_test: 99
 
 # Loss
 loss: BCE
