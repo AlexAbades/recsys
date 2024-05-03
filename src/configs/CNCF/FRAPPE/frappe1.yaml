@@ -1,4 +1,4 @@
-foldername: frappe5V2-cncf-b256
+foldername: frappe5V2-compiled
 
 # MLP: in 32+32+12 = 76
 layers: [76, 32, 16, 8]

@@ -186,6 +186,9 @@ def train_with_config(args, opts):
     global _loss_fn
     global _device
 
+    # Time to save the model preventing hpc killing
+    s1 = time()
+
     # Folder structure checkpoint
     data_name, check_point_path = create_checkpoint_folder(args, opts)
     # Load AE model
@@ -211,8 +214,12 @@ def train_with_config(args, opts):
     )
 
     # Dataloader
-    train_loader = DataLoader(train_data, args.batch_size, collate_fn=cncf_negative_sampling)
-    test_loader = DataLoader(test_data, args.batch_size, collate_fn=cncf_negative_sampling)
+    train_loader = DataLoader(
+        train_data, args.batch_size, collate_fn=cncf_negative_sampling
+    )
+    test_loader = DataLoader(
+        test_data, args.batch_size, collate_fn=cncf_negative_sampling
+    )
 
     # Num User, Items Context Features
     num_users = args.num_users
@@ -324,10 +331,60 @@ def train_with_config(args, opts):
                     ndcg=ndcg,
                     epoch=epoch,
                 )
+
+            # Plot and save losses every 23 hours
+            s2 = time()
+            elapsed_time = s2 - s1
+            if elapsed_time >= (23 * 60 * 60):
+                plot_and_save_dict(losses, check_point_path)
+                plot_and_save_dict(
+                    hr_dict,
+                    check_point_path,
+                    filename="hr.png",
+                    title="HR per Epoch",
+                    ylabel="HR",
+                )
+                plot_and_save_dict(
+                    mrr_dict,
+                    check_point_path,
+                    filename="mrr.png",
+                    title="MRR per Epoch",
+                    ylabel="MRR",
+                )
+                plot_and_save_dict(
+                    ndcg_dict,
+                    check_point_path,
+                    filename="ndcg.png",
+                    title="NDCG per Epoch",
+                    ylabel="NDCG",
+                )
+
+                save_model_specs(rs_model, check_point_path)
+                save_dict_to_file(args, check_point_path)
+                save_dict_to_file(losses, check_point_path, filename="loses.txt")
+                save_dict_to_file(hr_dict, check_point_path, filename="hr.txt")
+                save_dict_to_file(mrr_dict, check_point_path, filename="mrr.txt")
+                save_dict_to_file(ndcg_dict, check_point_path, filename="ndcg.txt")
+                s1 = time()
+
     plot_and_save_dict(losses, check_point_path)
-    plot_and_save_dict(hr_dict, check_point_path, filename="hr.png")
-    plot_and_save_dict(mrr_dict, check_point_path, filename="mrr.png")
-    plot_and_save_dict(ndcg_dict, check_point_path, filename="ndcg.png")
+    plot_and_save_dict(
+        hr_dict, check_point_path, filename="hr.png", title="HR per Epoch", ylabel="HR"
+    )
+    plot_and_save_dict(
+        mrr_dict,
+        check_point_path,
+        filename="mrr.png",
+        title="MRR per Epoch",
+        ylabel="MRR",
+    )
+    plot_and_save_dict(
+        ndcg_dict,
+        check_point_path,
+        filename="ndcg.png",
+        title="NDCG per Epoch",
+        ylabel="NDCG",
+    )
 
     save_model_specs(rs_model, check_point_path)
     save_dict_to_file(args, check_point_path)

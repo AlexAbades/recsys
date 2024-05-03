@@ -1,0 +1,32 @@
+foldername: yelp-ContextV2
+
+# MLP: in 32+32+13 = 77
+layers: [77, 32, 16, 8]
+
+# GMF
+num_factors: 8
+
+# Data
+processed_data_root: data/processed/YELP/CNCF/yelp5ContextV2/
+
+num_users: 215366
+num_items: 95895
+num_context: 13
+
+num_negative_instances_train: 4
+num_negative_instances_test: 99
+
+# Training
+epochs: 100
+batch_size: 256
+lr: 0.001
+optimizer: adam
+dropout: 0
+
+# Evaluation
+topK: 10
+evaluation_threads: 1
+verbose: 1
+
+# Loss
+loss: BCE
