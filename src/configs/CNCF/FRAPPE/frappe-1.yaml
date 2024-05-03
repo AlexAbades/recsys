@@ -1,4 +1,4 @@
-foldername: yelp-b264-f8-test
+foldername: frappe-cncf-b256-f8-test
 
 # MLP: in 32+32+21
 layers: [85, 32, 16, 8]
@@ -8,21 +8,20 @@ num_factors: 8
 
 # Data
 # processed_data_root: /work3/s212784/data/processed/YELP/yelp_2_ctx/
-processed_data_root: data/processed/YELP/CNCF/yelp5Context/
-
-num_users: 215366
-num_items: 95895
+processed_data_root: data/processed/FRAPPE/CNCF/frappe5Context/
+num_users: 654
+num_items: 1127
 num_context: 21
 
-num_workers: 2
+num_workers: 4
 cpu_nodes: 4
 
 num_negative_instances_train: 4
 num_negative_instances_test: 99
 
 # Training
-epochs: 100
-batch_size: 264
+epochs: 5
+batch_size: 256
 lr: 0.001
 optimizer: adam
 dropout: 0

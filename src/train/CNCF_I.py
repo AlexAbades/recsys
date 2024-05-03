@@ -11,7 +11,7 @@ from torch import nn, optim
 from torch.nn import Module
 from torch.optim import Optimizer
 from torch.utils.data import DataLoader
-
+from memory_profiler import profile
 
 from src.data.cncf_collate_fn import cncf_negative_sampling
 from src.data.cncf_interaction_dataset import CNCFDataset
@@ -34,6 +34,11 @@ from src.utils.tools.tools import (
 )
 
 
+os.environ["MKL_NUM_THREADS"] = "8"  # Set NUM_CORES to the number of physical cores you wish to use
+os.environ["OMP_NUM_THREADS"] = "8"
+
+torch.set_num_threads(8)
+
 def parse_args():
     parser = argparse.ArgumentParser(description="Run context Aware NCF.")
     parser.add_argument(
@@ -54,7 +59,8 @@ def parse_args():
     return opts
 
 
-_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+_device = torch.device("cpu")
+# _device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # TODO: Maybe extract as dictionary
 _optimizers = {"adam": optim.Adam, "SGD": optim.SGD}
@@ -84,18 +90,27 @@ def train_epoch(
     model.train()
     total_loss = 0.0
     num_batches = 0
+    pid = os.getpid()
+    print(f"The current process ID is: {pid}")
+    
 
     # calculate_memory_allocation()
+    s1 = time()
+    c = 0
+    print(f"Number of batches: {len(train_loader)}")
     for batch in train_loader:
         user_input = batch["user"].to(_device)
         item_input = batch["item"].to(_device)
         context_input = batch["context"].to(_device)
         ratings = batch["rating"].to(_device)
         ratings = ratings.view(-1, 1)
+        if not c:
+            print(f"User Input: {user_input.shape}")
+          
+            c = 1
 
         output = model(user_input, item_input, context_input)
         loss = loss_fn(output, ratings)
-
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
@@ -103,6 +118,8 @@ def train_epoch(
         total_loss += loss.item()
         num_batches += 1
         if num_batches % 100 == 0:
+            print(f"Batch {num_batches} - Time: {time() - s1}")
+            print(f"Batch {num_batches} - Loss: {loss.item()}")
             logger.log(f"Batch {num_batches} - Loss: {loss.item()}")
 
     losses[idx_loss] = total_loss / num_batches
@@ -118,7 +135,6 @@ def evaluate_model(model_pos, data_loader, topK: int):
     all_items = []
     all_predictions = []
     all_gtItems = []
-
     with torch.no_grad():
         for batch in data_loader:
             user_input = batch["user"].to(_device)
@@ -134,7 +150,7 @@ def evaluate_model(model_pos, data_loader, topK: int):
             all_users.append(user_input.cpu().numpy())
             all_items.append(item_input.cpu().numpy())
             all_gtItems.append(gtItems.numpy())
-
+    
     # Concatenate all arrays into single NumPy arrays
     all_predictions = np.concatenate(all_predictions, axis=0).flatten()
     all_users = np.concatenate(all_users, axis=0).flatten()
@@ -163,7 +179,7 @@ def evaluate_model(model_pos, data_loader, topK: int):
 
     return np.mean(hrs), np.mean(rrs), np.mean(ndcgs)
 
-
+# @profile
 def train_with_config(args, opts):
     global _optimizers
     global _loss_fn
@@ -188,23 +204,29 @@ def train_with_config(args, opts):
         processed_data_path,
         split="train",
         n_items=args.num_items,
-        num_negative_samples=5,
+        num_negative_samples=args.num_negative_instances_train,
     )
     logger.log(f"Train Data Loaded")
     test_data = CNCFDataset(
         processed_data_path,
         split="test",
         n_items=args.num_items,
-        num_negative_samples=99,
+        num_negative_samples=args.num_negative_instances_test,
     )
+    print(train_data.data.shape)
     logger.log(f"Test Data Loaded")
 
     # Dataloader
+    s1 = time()
     train_loader = DataLoader(
         train_data, args.batch_size, collate_fn=cncf_negative_sampling
     )
+    s2 = time()
+    print(f"Time to create train loader: {s2 - s1}")
+    # Number of batches
+    print(f"Number of batches: {len(train_loader)}")
     test_loader = DataLoader(
-        test_data, args.batch_size, collate_fn=cncf_negative_sampling
+        test_data, args.batch_size,  collate_fn=cncf_negative_sampling
     )
 
     # Num User, Items Context Features
@@ -223,22 +245,22 @@ def train_with_config(args, opts):
 
     # Initialize Optimizer and Loss function
     loss_fn = _loss_fn[args.loss]
-    optimizers = _optimizers[args.optimizer](model.parameters(), lr=args.lr)
+    optimizer = _optimizers[args.optimizer](model.parameters(), lr=args.lr)
     losses = dict()
     min_loss = float("inf")
 
     # Initialize performance
-    (hr, mrr, ndcg) = evaluate_model(model, test_loader, topK=args.topK)
-    print(f"Init: HR = {hr:.4f}, MRR = {mrr:.4f}, NDCG = {ndcg:.4f}")
-    best_hr = hr
+    # (hr, mrr, ndcg) = evaluate_model(model, test_loader, topK=args.topK)
+    # print(f"Init: HR = {hr:.4f}, MRR = {mrr:.4f}, NDCG = {ndcg:.4f}")
+    # best_hr = hr
 
     for epoch in range(args.epochs):
         print("Training epoch %d." % epoch)
         logger.log("Training epoch %d." % epoch)
         start_time = time()
-        # TODO: We have to actualize in each epoch the data.
+
         # Curriculum Learning
-        train_epoch(optimizers, loss_fn, train_loader, model, losses)
+        train_epoch(optimizer, loss_fn, train_loader, model, losses)
 
         # Sample Train Time
         train_time = (time() - start_time) / 60
@@ -277,7 +299,7 @@ def train_with_config(args, opts):
 
             # Save lastest model
             save_checkpoint(
-                chk_path_latest, epoch, args.lr, optimizers, model, min_loss
+                chk_path_latest, epoch, args.lr, optimizer, model, min_loss
             )
             save_accuracy(
                 check_point_path + "/latest_epoch",
@@ -291,7 +313,7 @@ def train_with_config(args, opts):
             if hr > best_hr:
                 best_hr = hr
                 save_checkpoint(
-                    chk_path_best, epoch, args.lr, optimizers, model, min_loss
+                    chk_path_best, epoch, args.lr, optimizer, model, min_loss
                 )
                 save_accuracy(
                     check_point_path + "/best_epoch",
@@ -307,5 +329,5 @@ def train_with_config(args, opts):
 
 if __name__ == "__main__":
     opts = parse_args()
-    args = get_config(opts.config)
+    args = get_config(opts.config)   
     train_with_config(args, opts)
