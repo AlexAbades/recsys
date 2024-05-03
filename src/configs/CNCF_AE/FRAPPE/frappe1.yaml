@@ -1,6 +1,6 @@
 foldername: frappe-ae-c12-b256-f8
 
-# MLP: in 32+32+9 (latent from AE)
+# MLP: in 32+32+9 = 73  (latent from AE)
 layers: [73, 32, 16, 8]
 
 # GMF
@@ -17,7 +17,7 @@ ae_path: checkpoints/AE/frapppe5ContextV2/frappeV2-tanh/best_epoch.bin
 processed_data_root: /home/alexabades/recsys/data/processed/FRAPPE/CNCF/frapppe5ContextV2
 num_users: 654
 num_items: 1127
-num_context: 21
+num_context: 12
 
 
 # Training

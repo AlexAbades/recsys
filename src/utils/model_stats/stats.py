@@ -117,7 +117,14 @@ def save_model_specs(model, folder_path, filename="model_specs.txt"):
     print(f"Model specifications saved to {file_path}")
 
 
-def plot_and_save_dict(loss_dict, folder_path, filename="loss_plot.png"):
+def plot_and_save_dict(
+    loss_dict,
+    folder_path,
+    filename="loss_plot.png",
+    title="Test Loss per Epoch",
+    xlabel="Epoch",
+    ylabel="Loss",
+):
     """
     Plots the training losses and saves the plot to a given folder path.
 
@@ -147,9 +154,9 @@ def plot_and_save_dict(loss_dict, folder_path, filename="loss_plot.png"):
     # Plotting
     plt.figure(figsize=(10, 6))
     plt.plot(epochs, losses, marker="o", linestyle="-", color="blue")
-    plt.title("Test Loss per Epoch")
-    plt.xlabel("Epoch")
-    plt.ylabel("Loss")
+    plt.title(title)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
     plt.grid(True)
 
     # plt.ylim(0, max_loss)
@@ -211,10 +218,10 @@ def save_dict_to_file(dict_data, folder_path, filename="dict_contents.txt"):
     # Open the file and write the serialized string
     with open(file_path, "w") as f:
         for i in dict_data.keys():
-            f.write(f'{i}: {dict_data[i]}\n')
-        
+            f.write(f"{i}: {dict_data[i]}\n")
 
     print(f"Dictionary contents saved to {file_path}")
+
 
 # def save_dict_to_file(dict_data, folder_path, filename="dict_contents.txt"):
 #     """

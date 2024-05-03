@@ -72,6 +72,7 @@ def train_epoch(
     train_loader: DataLoader,
     model: Module,
     losses: Dict,
+    _device=_device,
 ):
     """
     Function that performs a training epoch step.
@@ -83,29 +84,18 @@ def train_epoch(
         - model: Model initialized
 
     """
-    global _device
 
     idx_loss = len(losses.keys())
     model.train()
     total_loss = 0.0
     num_batches = 0
-    pid = os.getpid()
-    print(f"The current process ID is: {pid}")
 
-    # calculate_memory_allocation()
-    s1 = time()
-    c = 0
-    print(f"Number of batches: {len(train_loader)}")
     for batch in train_loader:
         user_input = batch["user"].to(_device)
         item_input = batch["item"].to(_device)
         context_input = batch["context"].to(_device)
         ratings = batch["rating"].to(_device)
         ratings = ratings.view(-1, 1)
-        if not c:
-            print(f"User Input: {user_input.shape}")
-
-            c = 1
 
         output = model(user_input, item_input, context_input)
         loss = loss_fn(output, ratings)
@@ -116,9 +106,8 @@ def train_epoch(
         total_loss += loss.item()
         num_batches += 1
         if num_batches % 100 == 0:
-            print(f"Batch {num_batches} - Time: {time() - s1}")
             print(f"Batch {num_batches} - Loss: {loss.item()}")
-            logger.log(f"Batch {num_batches} - Loss: {loss.item()}")
+            # logger.log(f"Batch {num_batches} - Loss: {loss.item()}")
 
     losses[idx_loss] = total_loss / num_batches
 
@@ -246,6 +235,11 @@ def train_with_config(args, opts):
     optimizer = _optimizers[args.optimizer](model.parameters(), lr=args.lr)
     losses = dict()
     min_loss = float("inf")
+
+    print('Compiling training process')
+    s1 = time()
+    train_opt = torch.compile(train_epoch, mode="reduce-overhead")
+    print('Training process compiled', time() - s1)
 
     # Initialize performance
     (hr, mrr, ndcg) = evaluate_model(model, test_loader, topK=args.topK)
