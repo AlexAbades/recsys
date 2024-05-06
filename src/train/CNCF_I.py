@@ -59,7 +59,6 @@ def parse_args():
 
 
 # _device = torch.device("cpu")
-_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # TODO: Maybe extract as dictionary
 _optimizers = {"adam": optim.Adam, "SGD": optim.SGD}
@@ -252,6 +251,11 @@ def train_with_config(args, opts):
     print(f"Init: HR = {hr:.4f}, MRR = {mrr:.4f}, NDCG = {ndcg:.4f}")
     best_hr = hr
 
+    # Initialize dictionaries to store evaluation metrics
+    hr_dict = {}
+    mrr_dict = {}
+    ndcg_dict = {}
+
     for epoch in range(args.epochs):
         print("Training epoch %d." % epoch)
         logger.log("Training epoch %d." % epoch)
@@ -274,6 +278,10 @@ def train_with_config(args, opts):
             (hr, mrr, ndcg) = evaluate_model(model, test_loader, topK=args.topK)
             test_time = ((time() - start_time) / 60) - train_time
             total_time = train_time + test_time
+
+            hr_dict[epoch] = hr
+            mrr_dict[epoch] = mrr
+            ndcg_dict[epoch] = ndcg
 
             print(
                 f"[{epoch:d}] Elapsed time: {total_time:.2f}m - Train time: {train_time:.2f}m - Test time: {test_time:.2f}"
@@ -319,6 +327,23 @@ def train_with_config(args, opts):
                     epoch=epoch,
                 )
     plot_and_save_dict(losses, check_point_path)
+    plot_and_save_dict(
+        hr_dict, check_point_path, filename="hr.png", title="HR per Epoch", ylabel="HR"
+    )
+    plot_and_save_dict(
+        mrr_dict,
+        check_point_path,
+        filename="mrr.png",
+        title="MRR per Epoch",
+        ylabel="MRR",
+    )
+    plot_and_save_dict(
+        ndcg_dict,
+        check_point_path,
+        filename="ndcg.png",
+        title="NDCG per Epoch",
+        ylabel="NDCG",
+    )
     save_model_specs(model, check_point_path)
     save_dict_to_file(args, check_point_path)
     save_dict_to_file(losses, check_point_path, filename="loses.txt")

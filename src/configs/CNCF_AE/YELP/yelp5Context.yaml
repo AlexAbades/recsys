@@ -1,0 +1,38 @@
+foldername: yelp5Context-ae-b256
+
+# MLP: in 32+32+9 = 73  (latent from AE)
+layers: [73, 32, 16, 8]
+
+# GMF
+num_factors: 8
+
+# Autoencoder
+layers_ae: [21, 9]
+ae_bottleneck: 9
+ae_path: checkpoints/AE/yelp5Context/yelp-no-init-weights-b256-2/best_epoch.bin
+
+
+# Data
+# processed_data_root: data/processed/FRAPPE/CNCF/frappe5Context/
+processed_data_root: data/processed/YELP/CNCF/yelp5Context/
+num_users: 215366
+num_items: 95895
+num_context: 21
+
+
+# Training
+epochs: 100
+batch_size: 256
+lr: 0.001
+optimizer: adam
+dropout: 0
+num_negative_instances_train: 4
+
+# Evaluation
+topK: 10
+evaluation_threads: 1
+verbose: 1
+num_negative_instances_test: 99  
+
+# Loss
+loss: BCE

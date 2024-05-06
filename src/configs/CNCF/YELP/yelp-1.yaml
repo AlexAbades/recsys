@@ -1,7 +1,7 @@
 foldername: yelp-b264-f8-test
 
-# MLP: in 32+32+21
-layers: [85, 32, 16, 8]
+# MLP: in 32+32+22 = 66
+layers: [86, 32, 16, 8]
 
 # GMF
 num_factors: 8

@@ -56,7 +56,7 @@ class NCFDataset(Dataset):
                 "gtItem": torch.tensor(item, dtype=torch.long),
             }
 
-        user, item, rating = self.data.iloc[index]
+        user, item, rating, *_ = self.data.iloc[index]
         positive_samples = self.positive_samples[user]
         negative_samples = list(self.items - positive_samples)
         negative_samples = sample(negative_samples, self.num_negative_samples)

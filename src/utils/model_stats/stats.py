@@ -23,7 +23,8 @@ def save_checkpoint(chk_path, epoch, lr, optimizer, model_pos, min_loss):
 
 
 def load_model_with_params(path: str, base_model: Module):
-    checkpoint = torch.load(path)
+    map_location = 'cuda' if torch.cuda.is_available() else 'cpu'
+    checkpoint = torch.load(path, map_location=map_location)
     model_params = checkpoint["model_params"]
 
     # Reconstruct the model based on saved parameters

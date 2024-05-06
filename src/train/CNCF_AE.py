@@ -19,6 +19,7 @@ from src.models.AutoEncoder.AE import AutoEncoder
 from src.models.CNCF.cncf import ContextualNeuralCollavorativeFiltering
 from src.utils.eval import getBinaryDCG, getHR, getRR
 from src.utils.model_stats.stats import (
+    calculate_model_size,
     load_model_with_params,
     plot_and_save_dict,
     save_accuracy,
@@ -29,6 +30,7 @@ from src.utils.model_stats.stats import (
 )
 from src.utils.tools.tools import (
     ROOT_PATH,
+    TextLogger,
     create_checkpoint_folder,
     get_config,
     get_parent_path,
@@ -184,7 +186,7 @@ def evaluate_model(
 def train_with_config(args, opts):
     global _optimizers
     global _loss_fn
-    global _device
+    global _device, logger
 
     # Time to save the model preventing hpc killing
     s1 = time()
@@ -197,7 +199,11 @@ def train_with_config(args, opts):
     parent_path = get_parent_path(ROOT_PATH)
     processed_data_path = os.path.join(parent_path, args.processed_data_root)
 
+    log_path = os.path.join(ROOT_PATH, f"logs/logs_{args.foldername}")
+    logger = TextLogger(log_path)
+
     print(f"Running in device: {_device}")
+    logger.log(f"Running in device: {_device}")
 
     # Load preprocessed Data
     train_data = CNCFDataset(
@@ -206,12 +212,18 @@ def train_with_config(args, opts):
         n_items=args.num_items,
         num_negative_samples=args.num_negative_instances_train,
     )
+    logger.log(f"Train Data Loaded")
+    print(f"Train Data Loaded")
+
     test_data = CNCFDataset(
         processed_data_path,
         split="test",
         n_items=args.num_items,
         num_negative_samples=args.num_negative_instances_test,
     )
+
+    print("Test Data Loaded")
+    logger.log(f"Test Data Loaded")
 
     # Dataloader
     train_loader = DataLoader(
@@ -228,6 +240,9 @@ def train_with_config(args, opts):
 
     ae_model = load_model_with_params(ae_model_path, AutoEncoder).to(_device)
 
+    print(f"Autoencoder Model Loaded")
+    logger.log(f"Autoencoder Model Loaded")
+
     rs_model = ContextualNeuralCollavorativeFiltering(
         num_users=num_users,
         num_items=num_items,
@@ -235,6 +250,7 @@ def train_with_config(args, opts):
         mf_dim=args.num_factors,
         layers=args.layers,
     ).to(_device)
+    logger.log(f"Model size: {calculate_model_size(rs_model)} MB")
 
     # Initialize Optimizer and Loss function
     loss_fn = _loss_fn[args.loss]
@@ -247,6 +263,7 @@ def train_with_config(args, opts):
         rs_model=rs_model, ae_model=ae_model, data_loader=test_loader, topK=args.topK
     )
     print(f"Init: HR = {hr:.4f}, MRR = {mrr:.4f}, NDCG = {ndcg:.4f}")
+    logger.log(f"Init: HR = {hr:.4f}, MRR = {mrr:.4f}, NDCG = {ndcg:.4f}")
     best_hr = hr
 
     # Initialize dictionaries to store evaluation metrics
@@ -296,6 +313,12 @@ def train_with_config(args, opts):
                 f"[{epoch:d}] Elapsed time: {total_time:.2f}m - Train time: {train_time:.2f}m - Test time: {test_time:.2f}"
             )
             print(
+                f"HR = {hr:.4f}, MRR = {mrr:.4f}, NDCG = {ndcg:.4f}, loss = {losses[epoch]:.4f}"
+            )
+            logger.log(
+                f"[{epoch:d}] Elapsed time: {total_time:.2f}m - Train time: {train_time:.2f}m - Test time: {test_time:.2f}"
+            )
+            logger.log(
                 f"HR = {hr:.4f}, MRR = {mrr:.4f}, NDCG = {ndcg:.4f}, loss = {losses[epoch]:.4f}"
             )
 

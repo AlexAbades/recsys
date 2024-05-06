@@ -19,4 +19,4 @@ module load cuda/11.8
 source /zhome/c0/a/164613/Desktop/recsys/venv/bin/activate
 export PYTHONPATH=/zhome/c0/a/164613/Desktop/recsys:$PYTHONPATH
 
-python src/data.py
+python src/train/CNCF_AE.py --config configs/CNCF_AE/YELP/yelp5Context.yaml -ae checkpoints/AE/YELP/yelp5Context/yelp-no-init-weights-b256-2/best_epoch.bin
